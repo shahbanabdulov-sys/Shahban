@@ -1,0 +1,4 @@
+[build]
+  publish = "."
+
+# Static site: index.html + script.js + style.css

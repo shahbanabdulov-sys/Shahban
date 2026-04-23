@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Линия с управлением мышью</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="mobile-toolbar hidden" id="mobileToolbar">
+    <button type="button" data-mobile-open="modes">Режим</button>
+    <button type="button" data-mobile-open="timeframes">ТФ</button>
+    <button type="button" data-mobile-open="viewTypes">Тип</button>
+    <button type="button" data-mobile-open="candleTimeframes">Свечи</button>
+    <button type="button" data-mobile-open="commentControls">Коммент</button>
+    <button type="button" data-mobile-open="dataControls">Данные</button>
+    <button type="button" data-mobile-open="authPanel">Акк</button>
+    <button type="button" data-mobile-open="levelsPanel">Уровни</button>
+  </div>
+  <div class="mobile-overlay hidden" id="mobileOverlay" data-mobile-close="1"></div>
+
+  <div class="modes" id="modes">
+    <button data-mode="live" class="active">Лайв</button>
+    <button data-mode="view">Просмотр</button>
+  </div>
+  <div class="timeframes" id="timeframes">
+    <button data-range="1h" class="active">1 час</button>
+    <button data-range="1d">1 день</button>
+    <button data-range="7d">7 дн</button>
+    <button data-range="15d">15 дн</button>
+    <button data-range="30d">1 месяц</button>
+  </div>
+  <div class="view-types hidden" id="viewTypes">
+    <button data-view-type="line" class="active">Линия</button>
+    <button data-view-type="candles">Свечи</button>
+  </div>
+  <div class="candle-timeframes hidden" id="candleTimeframes">
+    <button data-candle-range="5m" class="active">5 мин</button>
+    <button data-candle-range="1h">1 час</button>
+    <button data-candle-range="1d">1 день</button>
+    <button data-candle-range="1w">1 нед</button>
+    <button data-candle-range="14d">14 дн</button>
+    <button data-candle-range="30d">1 месяц</button>
+  </div>
+  <div class="comment-controls hidden" id="commentControls">
+    <button id="addCommentBtn" type="button">Комментарий к свече</button>
+    <button id="toggleCommentsBtn" type="button">Скрыть комментарии</button>
+  </div>
+
+  <div class="modal hidden" id="candleCommentModal" role="dialog" aria-modal="true" aria-labelledby="candleCommentTitle">
+    <div class="modal-backdrop" data-close-modal="1"></div>
+    <div class="modal-card">
+      <div class="modal-title" id="candleCommentTitle">Комментарий к свече</div>
+      <div class="modal-subtitle" id="candleCommentMeta">—</div>
+      <textarea id="candleCommentText" rows="4" placeholder="Введите комментарий..."></textarea>
+      <div class="modal-actions">
+        <button id="candleCommentSaveBtn" type="button">Сохранить</button>
+        <button id="candleCommentDeleteBtn" type="button" class="danger">Удалить</button>
+        <button id="candleCommentCancelBtn" type="button">Отмена</button>
+      </div>
+    </div>
+  </div>
+  <div class="data-controls" id="dataControls">
+    <button id="exportBtn" type="button">Экспорт</button>
+    <button id="importBtn" type="button">Импорт</button>
+    <input id="importInput" type="file" accept="application/json" class="hidden">
+    <div class="share-link" id="shareLink">Ссылка: —</div>
+  </div>
+  <div class="auth-panel" id="authPanel">
+    <div class="auth-row">
+      <input id="authUsername" type="text" placeholder="Логин">
+      <input id="authPassword" type="password" placeholder="Пароль">
+    </div>
+    <div class="auth-row">
+      <button id="registerBtn" type="button">Регистрация</button>
+      <button id="loginBtn" type="button">Вход</button>
+      <button id="logoutBtn" type="button" class="hidden">Выход</button>
+    </div>
+    <div class="auth-status" id="authStatus">Гость</div>
+  </div>
+
+  <div class="levels-panel" id="levelsPanel">
+    <div class="levels-title">Уровни</div>
+    <div class="levels-stats">
+      Очки: <span id="pointsValue">0</span> · Уровень: <span id="levelName">—</span>
+    </div>
+    <div class="levels-progress">
+      <div class="levels-progress-bar" id="levelProgressBar"></div>
+    </div>
+    <div class="levels-next" id="nextLevelHint">Добавьте уровни для мотивации.</div>
+    <div class="levels-editor">
+      <input id="levelNameInput" type="text" placeholder="Название уровня">
+      <input id="levelPointsInput" type="number" min="0" step="1" placeholder="Очков нужно">
+      <button id="addLevelBtn" type="button">Добавить</button>
+    </div>
+    <div class="levels-list" id="levelsList"></div>
+  </div>
+  <div class="stats" id="stats">
+    <div>Значение Y: <span id="valueY">0.00</span></div>
+    <div>Изменение: <span id="deltaY">+0.00</span></div>
+  </div>
+  <div class="hint">
+    Зажмите левую кнопку мыши и ведите курсор вверх/вниз, чтобы менять направление.
+  </div>
+  <div class="clock" id="clock">00:00.00</div>
+  <script src="script.js"></script>
+</body>
+</html>
