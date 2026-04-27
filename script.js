@@ -1,5 +1,8 @@
+import { supabase } from "./supabaseClient.js";
+
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
+const appBrandNode = document.getElementById("appBrand");
 const valueYNode = document.getElementById("valueY");
 const deltaYNode = document.getElementById("deltaY");
 const clockNode = document.getElementById("clock");
@@ -9,17 +12,51 @@ const candleTimeframesNode = document.getElementById("candleTimeframes");
 const commentControlsNode = document.getElementById("commentControls");
 const addCommentBtn = document.getElementById("addCommentBtn");
 const toggleCommentsBtn = document.getElementById("toggleCommentsBtn");
+const tasksTabNode = document.getElementById("tasksTab");
+const openTasksBtn = document.getElementById("openTasksBtn");
+const soundsTabNode = document.getElementById("soundsTab");
+const openSoundsBtn = document.getElementById("openSoundsBtn");
+const tasksPageNode = document.getElementById("tasksPage");
+const closeTasksBtn = document.getElementById("closeTasksBtn");
+const soundsPageNode = document.getElementById("soundsPage");
+const closeSoundsBtn = document.getElementById("closeSoundsBtn");
+const tasksGlobalEnabledInput = document.getElementById("tasksGlobalEnabled");
+const soundsEnabledInput = document.getElementById("soundsEnabled");
+const soundVolumeInput = document.getElementById("soundVolumeInput");
+const soundFileInput = document.getElementById("soundFileInput");
+const soundsListNode = document.getElementById("soundsList");
+const soundsTabBadgeNode = document.getElementById("soundsTabBadge");
+const soundsStatusNode = document.getElementById("soundsStatus");
+const taskFormNode = document.getElementById("taskForm");
+const taskTitleInput = document.getElementById("taskTitleInput");
+const taskDescriptionInput = document.getElementById("taskDescriptionInput");
+const taskRewardInput = document.getElementById("taskRewardInput");
+const taskPenaltyInput = document.getElementById("taskPenaltyInput");
+const taskTimeInput = document.getElementById("taskTimeInput");
+const tasksListNode = document.getElementById("tasksList");
+const tasksTabBadgeNode = document.getElementById("tasksTabBadge");
+const activeTasksCountNode = document.getElementById("activeTasksCount");
+const dueTasksCountNode = document.getElementById("dueTasksCount");
+const nextTaskTimeNode = document.getElementById("nextTaskTime");
+const taskReportModalNode = document.getElementById("taskReportModal");
+const taskReportTimeNode = document.getElementById("taskReportTime");
+const taskReportNameNode = document.getElementById("taskReportName");
+const taskReportDescriptionNode = document.getElementById("taskReportDescription");
+const taskReportPointsNode = document.getElementById("taskReportPoints");
+const taskDoneBtn = document.getElementById("taskDoneBtn");
+const taskFailedBtn = document.getElementById("taskFailedBtn");
+const taskIgnoreBtn = document.getElementById("taskIgnoreBtn");
 const modesNode = document.getElementById("modes");
 const hintNode = document.querySelector(".hint");
-const exportBtn = document.getElementById("exportBtn");
-const importBtn = document.getElementById("importBtn");
-const importInput = document.getElementById("importInput");
 const dataControlsNode = document.getElementById("dataControls") || document.querySelector(".data-controls");
 const shareLinkNode = document.getElementById("shareLink");
 const authPanelNode = document.getElementById("authPanel");
 const levelsPanelNode = document.getElementById("levelsPanel");
-const pointsValueNode = document.getElementById("pointsValue");
+const currentLevelToggleNode = document.getElementById("currentLevelToggle");
 const levelNameNode = document.getElementById("levelName");
+const currentLevelPointsNode = document.getElementById("currentLevelPoints");
+const currentLevelChevronNode = document.getElementById("currentLevelChevron");
+const levelsDetailsNode = document.getElementById("levelsDetails");
 const levelProgressBarNode = document.getElementById("levelProgressBar");
 const nextLevelHintNode = document.getElementById("nextLevelHint");
 const levelNameInput = document.getElementById("levelNameInput");
@@ -32,14 +69,27 @@ const candleCommentTextNode = document.getElementById("candleCommentText");
 const candleCommentSaveBtn = document.getElementById("candleCommentSaveBtn");
 const candleCommentDeleteBtn = document.getElementById("candleCommentDeleteBtn");
 const candleCommentCancelBtn = document.getElementById("candleCommentCancelBtn");
-const authUsernameInput = document.getElementById("authUsername");
-const authPasswordInput = document.getElementById("authPassword");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
 const registerBtn = document.getElementById("registerBtn");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const authStatus = document.getElementById("authStatus");
 const mobileToolbarNode = document.getElementById("mobileToolbar");
 const mobileOverlayNode = document.getElementById("mobileOverlay");
+const appPanelsForAuth = [
+  appBrandNode,
+  modesNode,
+  timeframeNode,
+  viewTypesNode,
+  candleTimeframesNode,
+  commentControlsNode,
+  tasksTabNode,
+  soundsTabNode,
+  dataControlsNode,
+  levelsPanelNode,
+  mobileToolbarNode
+];
 
 let width = 0;
 let height = 0;
@@ -58,7 +108,7 @@ const speedX = 60;
 const livePoints = [];
 const liveTailLength = 2000;
 const gridStepPx = 60;
-const valueStepPerGrid = 10;
+const valueStepPerGrid = 5;
 
 const pointIntervalMs = 60;
 const maxHistoryMs = 32 * 24 * 60 * 60 * 1000;
@@ -87,13 +137,28 @@ let selectedViewType = "line";
 let selectedCandleRange = "5m";
 let selectedMode = "live";
 let currentUser = null;
+let isProgressLoaded = false;
+let isApplyingRemoteProgress = false;
 let lastAutosaveAt = 0;
 let totalPoints = 0;
+let levelsExpanded = false;
+let tasksGlobalEnabled = true;
+let taskReportQueue = [];
+let activeTaskReport = null;
+let lastTaskCheckAt = 0;
+let soundsEnabled = false;
+let soundVolume = 0.65;
+let soundRecords = [];
+let soundDbPromise = null;
+let soundCurrentUrl = null;
+let soundCurrentIndex = 0;
+let isSoundLoopStarting = false;
 let levels = [
   { name: "Новичок", points: 0 },
   { name: "Уверенный", points: 200 },
   { name: "Профи", points: 600 },
 ];
+let tasks = [];
 let candleOffset = 0;
 let candleZoom = 1;
 let hoveredCandle = null;
@@ -108,32 +173,110 @@ let lastCandleHitboxes = [];
 let commentEditingCandleTime = null;
 
 const AUTOSAVE_MS = 1500;
+const LOCAL_PROGRESS_PREFIX = "productiv-line-progress:";
+const SOUND_DB_NAME = "productiv-line-sounds";
+const SOUND_STORE_NAME = "sounds";
+
+let saveInFlight = false;
+let pendingCloudSaveSnapshot = null;
+let latestLoadToken = 0;
+let lastSessionUserId = null;
+
+const soundPlayer = new Audio();
+soundPlayer.preload = "auto";
 
 function toSafeNumber(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function normalizeUsername(value) {
+function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-async function apiJson(method, url, body) {
-  const res = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-  if (!res.ok) {
-    const err = new Error(data?.error || `HTTP_${res.status}`);
-    err.status = res.status;
-    err.data = data;
-    throw err;
+function getLocalProgressKey(userId) {
+  return `${LOCAL_PROGRESS_PREFIX}${userId}`;
+}
+
+function getSnapshotSavedAt(snapshot) {
+  const numericSavedAt = Number(snapshot?.savedAt);
+  if (Number.isFinite(numericSavedAt)) return numericSavedAt;
+  const parsedSavedAt = Date.parse(snapshot?.savedAt || "");
+  return Number.isFinite(parsedSavedAt) ? parsedSavedAt : 0;
+}
+
+function readLocalSnapshotForUser(userId) {
+  try {
+    const raw = localStorage.getItem(getLocalProgressKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    console.warn("readLocalSnapshotForUser error:", error);
+    return null;
   }
-  return data;
+}
+
+function writeLocalSnapshotForUser(userId, snapshot) {
+  try {
+    localStorage.setItem(getLocalProgressKey(userId), JSON.stringify(snapshot));
+  } catch (error) {
+    console.warn("writeLocalSnapshotForUser error:", error);
+  }
+}
+
+function getNewestSnapshot(...snapshots) {
+  return snapshots
+    .filter((snapshot) => snapshot && typeof snapshot === "object")
+    .sort((a, b) => getSnapshotSavedAt(b) - getSnapshotSavedAt(a))[0] || null;
+}
+
+function saveLocalProgressForCurrentUser(snapshot = null) {
+  const userId = currentUser?.id;
+  if (!userId || !isProgressLoaded || isApplyingRemoteProgress) return null;
+  const nextSnapshot = snapshot ?? getSnapshot();
+  writeLocalSnapshotForUser(userId, nextSnapshot);
+  return nextSnapshot;
+}
+
+function createTaskId() {
+  return `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeTime(value) {
+  const text = String(value || "").trim();
+  return /^\d{2}:\d{2}$/.test(text) ? text : "";
+}
+
+function normalizeTask(item) {
+  const title = String(item?.title || "").trim().slice(0, 60);
+  const time = normalizeTime(item?.time);
+  if (!title || !time) return null;
+  const reports = item?.reports && typeof item.reports === "object" ? item.reports : {};
+  return {
+    id: String(item?.id || createTaskId()),
+    title,
+    description: String(item?.description || "").trim().slice(0, 300),
+    reward: Math.max(0, Math.floor(toSafeNumber(Number(item?.reward), 0))),
+    penalty: Math.max(0, Math.floor(toSafeNumber(Number(item?.penalty), 0))),
+    time,
+    enabled: item?.enabled !== false,
+    reports,
+  };
+}
+
+function getLocalDateKey(timestamp = Date.now()) {
+  const d = new Date(timestamp);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getScheduledTimestampForDate(time, timestamp = Date.now()) {
+  const [hours, minutes] = normalizeTime(time).split(":").map(Number);
+  const d = new Date(timestamp);
+  d.setHours(hours || 0, minutes || 0, 0, 0);
+  return d.getTime();
 }
 
 function getSnapshot() {
@@ -151,6 +294,10 @@ function getSnapshot() {
     candleComments,
     totalPoints,
     levels,
+    tasksGlobalEnabled,
+    tasks,
+    soundsEnabled,
+    soundVolume,
     history: history.slice(-50000),
   };
 }
@@ -187,6 +334,15 @@ function applySnapshot(parsed) {
       .sort((a, b) => a.points - b.points);
     if (cleaned.length > 0) levels = cleaned;
   }
+  tasksGlobalEnabled = parsed.tasksGlobalEnabled !== false;
+  if (Array.isArray(parsed.tasks)) {
+    tasks = parsed.tasks
+      .map(normalizeTask)
+      .filter(Boolean)
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }
+  soundsEnabled = parsed.soundsEnabled === true;
+  soundVolume = Math.max(0, Math.min(1, toSafeNumber(Number(parsed.soundVolume), 0.65)));
 
   if (parsed.selectedRange && rangeMap[parsed.selectedRange]) {
     selectedRange = parsed.selectedRange;
@@ -225,25 +381,79 @@ function applySnapshot(parsed) {
 
   initLiveLine();
   renderLevelsUi();
+  renderTasksUi();
+  renderSoundsUi();
+  updateSoundPlayback();
   return true;
 }
 
 function setAuthUiState() {
   const isLoggedIn = Boolean(currentUser);
+  const canUseApp = isLoggedIn && isProgressLoaded;
   registerBtn.classList.toggle("hidden", isLoggedIn);
   loginBtn.classList.toggle("hidden", isLoggedIn);
   logoutBtn.classList.toggle("hidden", !isLoggedIn);
-  authStatus.textContent = isLoggedIn ? `В аккаунте: ${currentUser}` : "Гость";
-}
-
-async function saveProgressForCurrentUser() {
-  if (!currentUser) return;
-  try {
-    await apiJson("PUT", "/api/progress", { progress: getSnapshot() });
-  } catch (_e) {
-    // ignore (offline)
+  authStatus.textContent = isLoggedIn
+    ? (isProgressLoaded ? `В аккаунте: ${currentUser.email || currentUser.id}` : "Загрузка аккаунта...")
+    : "Гость";
+  for (const node of appPanelsForAuth) {
+    if (!node) continue;
+    if (canUseApp) node.classList.remove("hidden");
+    else node.classList.add("hidden");
+  }
+  if (!isLoggedIn) {
+    closeMobilePanels();
+    closeTasksPage();
+    closeSoundsPage();
+    closeTaskReportModal();
+    stopSoundLoop();
+    hintNode.textContent = "Войдите или зарегистрируйтесь, чтобы открыть график и прогресс.";
   }
 }
+
+async function saveProgressForCurrentUser(snapshot = null) {
+  if (!currentUser || !isProgressLoaded || isApplyingRemoteProgress) {
+    console.log("saveProgressForCurrentUser: нет залогиненного пользователя");
+    return null;
+  }
+  const snapshotToSave = saveLocalProgressForCurrentUser(snapshot);
+  if (!snapshotToSave) return null;
+  pendingCloudSaveSnapshot = snapshotToSave;
+  if (saveInFlight) return null;
+
+  saveInFlight = true;
+  try {
+    const userId = currentUser.id;
+    if (!userId) {
+      console.log("saveProgressForCurrentUser: user id не найден");
+      return null;
+    }
+    let lastData = null;
+    while (pendingCloudSaveSnapshot) {
+      const queuedSnapshot = pendingCloudSaveSnapshot;
+      pendingCloudSaveSnapshot = null;
+      const payload = {
+        user_id: userId,
+        data: queuedSnapshot,
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await supabase.from("user_data").upsert(payload, { onConflict: "user_id" });
+      console.log("saveUserData result:", { userId, savedAt: queuedSnapshot.savedAt, data, error });
+      if (error) throw error;
+      lastData = data;
+    }
+    return lastData;
+  } catch (error) {
+    console.error("saveUserData error:", error);
+    return null;
+  } finally {
+    saveInFlight = false;
+    if (pendingCloudSaveSnapshot && currentUser?.id) {
+      setTimeout(() => saveProgressForCurrentUser(pendingCloudSaveSnapshot), 0);
+    }
+  }
+}
+const saveUserData = saveProgressForCurrentUser;
 
 function resizeCanvas() {
   width = window.innerWidth;
@@ -259,7 +469,7 @@ function isMobileLayout() {
 function layoutControls() {
   if (isMobileLayout()) return;
   if (!isMobileLayout()) {
-    for (const node of [modesNode, timeframeNode, viewTypesNode, candleTimeframesNode, commentControlsNode, dataControlsNode, authPanelNode, levelsPanelNode].filter(Boolean)) {
+    for (const node of [modesNode, timeframeNode, viewTypesNode, candleTimeframesNode, commentControlsNode, tasksTabNode, soundsTabNode, dataControlsNode, authPanelNode, levelsPanelNode].filter(Boolean)) {
       node.style.top = "";
     }
     return;
@@ -269,7 +479,7 @@ function layoutControls() {
   const startTop = 10;
 
   let topLeft = startTop;
-  for (const node of [modesNode, timeframeNode, viewTypesNode, candleTimeframesNode, commentControlsNode]) {
+  for (const node of [modesNode, timeframeNode, viewTypesNode, candleTimeframesNode, commentControlsNode, tasksTabNode, soundsTabNode]) {
     if (!node || node.classList.contains("hidden")) continue;
     node.style.top = `${topLeft}px`;
     topLeft += node.offsetHeight + gap;
@@ -288,15 +498,21 @@ function renderLevelsUi() {
   if (!Array.isArray(levels)) levels = [];
   const list = levels.slice().sort((a, b) => a.points - b.points);
 
-  pointsValueNode.textContent = String(Math.floor(totalPoints));
-
+  const roundedPoints = Math.floor(totalPoints);
   let current = null;
   for (const lvl of list) {
     if (totalPoints >= lvl.points) current = lvl;
   }
   const next = list.find((lvl) => totalPoints < lvl.points) || null;
 
-  levelNameNode.textContent = current?.name || "—";
+  if (levelNameNode) levelNameNode.textContent = current?.name || "Пока нет уровня";
+  if (currentLevelPointsNode) currentLevelPointsNode.textContent = `${roundedPoints} очк.`;
+  if (currentLevelToggleNode) {
+    currentLevelToggleNode.classList.toggle("expanded", levelsExpanded);
+    currentLevelToggleNode.setAttribute("aria-expanded", String(levelsExpanded));
+  }
+  if (currentLevelChevronNode) currentLevelChevronNode.textContent = levelsExpanded ? "⌃" : "⌄";
+  if (levelsDetailsNode) levelsDetailsNode.hidden = !levelsExpanded;
 
   if (!next) {
     levelProgressBarNode.style.width = list.length ? "100%" : "0%";
@@ -314,11 +530,13 @@ function renderLevelsUi() {
   for (const lvl of list) {
     const row = document.createElement("div");
     row.className = "level-item";
+    const isCurrent = current && lvl.name === current.name && lvl.points === current.points;
+    row.classList.toggle("current", Boolean(isCurrent));
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.textContent = `${lvl.name} `;
     const span = document.createElement("span");
-    span.textContent = `(${lvl.points})`;
+    span.textContent = isCurrent ? `(${lvl.points}) · мой уровень` : `(${lvl.points})`;
     meta.appendChild(span);
     const del = document.createElement("button");
     del.type = "button";
@@ -335,6 +553,381 @@ function renderLevelsUi() {
     row.appendChild(del);
     levelsListNode.appendChild(row);
   }
+}
+
+function renderTasksUi() {
+  if (tasksGlobalEnabledInput) tasksGlobalEnabledInput.checked = tasksGlobalEnabled;
+  const activeCount = tasks.filter((task) => task.enabled).length;
+  const dueCount = getDueTasks(Date.now()).length;
+  const nextTask = getNextPendingTask();
+  if (tasksTabBadgeNode) tasksTabBadgeNode.textContent = String(dueCount || activeCount);
+  if (activeTasksCountNode) activeTasksCountNode.textContent = String(activeCount);
+  if (dueTasksCountNode) dueTasksCountNode.textContent = String(dueCount);
+  if (nextTaskTimeNode) {
+    nextTaskTimeNode.textContent = nextTask ? `${nextTask.time} · ${nextTask.title}` : "—";
+  }
+  if (!tasksListNode) return;
+  const list = tasks.slice().sort((a, b) => a.time.localeCompare(b.time));
+  tasksListNode.innerHTML = "";
+  if (list.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "tasks-empty";
+    empty.textContent = "Заданий пока нет.";
+    tasksListNode.appendChild(empty);
+    return;
+  }
+
+  for (const task of list) {
+    const item = document.createElement("div");
+    item.className = "task-item";
+    item.classList.toggle("disabled", !task.enabled || !tasksGlobalEnabled);
+
+    const head = document.createElement("div");
+    head.className = "task-item-head";
+
+    const meta = document.createElement("div");
+    meta.className = "task-item-meta";
+    const title = document.createElement("div");
+    title.className = "task-item-title";
+    title.textContent = task.title;
+    const sub = document.createElement("div");
+    sub.className = "task-item-sub";
+    sub.textContent = `${task.time} · +${task.reward} / -${task.penalty}`;
+    meta.appendChild(title);
+    meta.appendChild(sub);
+
+    const switchLabel = document.createElement("label");
+    switchLabel.className = "switch";
+    const switchInput = document.createElement("input");
+    switchInput.type = "checkbox";
+    switchInput.checked = task.enabled;
+    switchInput.addEventListener("change", () => {
+      task.enabled = switchInput.checked;
+      saveProgressForCurrentUser();
+      renderTasksUi();
+      checkDueTasks(true);
+    });
+    const switchSpan = document.createElement("span");
+    switchLabel.appendChild(switchInput);
+    switchLabel.appendChild(switchSpan);
+
+    head.appendChild(meta);
+    head.appendChild(switchLabel);
+    item.appendChild(head);
+
+    if (task.description) {
+      const desc = document.createElement("div");
+      desc.className = "task-item-description";
+      desc.textContent = task.description;
+      item.appendChild(desc);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "task-item-actions";
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Удалить";
+    remove.addEventListener("click", () => {
+      const ok = window.confirm(`Удалить задание “${task.title}”?`);
+      if (!ok) return;
+      tasks = tasks.filter((itemTask) => itemTask.id !== task.id);
+      taskReportQueue = taskReportQueue.filter((itemTask) => itemTask.id !== task.id);
+      if (activeTaskReport?.id === task.id) closeTaskReportModal();
+      saveProgressForCurrentUser();
+      renderTasksUi();
+    });
+    actions.appendChild(remove);
+    item.appendChild(actions);
+
+    tasksListNode.appendChild(item);
+  }
+}
+
+function getNextPendingTask(now = Date.now()) {
+  if (!tasksGlobalEnabled) return null;
+  return tasks
+    .filter((task) => task.enabled && !task.reports?.[getLocalDateKey(now)])
+    .sort((a, b) => {
+      const aTime = getScheduledTimestampForDate(a.time, now);
+      const bTime = getScheduledTimestampForDate(b.time, now);
+      return aTime - bTime;
+    })[0] || null;
+}
+
+function openTasksPage() {
+  renderTasksUi();
+  tasksPageNode?.classList.remove("hidden");
+}
+
+function closeTasksPage() {
+  tasksPageNode?.classList.add("hidden");
+}
+
+function openSoundsPage() {
+  renderSoundsUi();
+  soundsPageNode?.classList.remove("hidden");
+}
+
+function closeSoundsPage() {
+  soundsPageNode?.classList.add("hidden");
+}
+
+function createSoundId() {
+  return `sound-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes) || 0;
+  if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function openSoundDb() {
+  if (soundDbPromise) return soundDbPromise;
+  soundDbPromise = new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB is not available"));
+      return;
+    }
+    const request = indexedDB.open(SOUND_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      const store = db.objectStoreNames.contains(SOUND_STORE_NAME)
+        ? request.transaction.objectStore(SOUND_STORE_NAME)
+        : db.createObjectStore(SOUND_STORE_NAME, { keyPath: "id" });
+      if (!store.indexNames.contains("userId")) store.createIndex("userId", "userId", { unique: false });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB open failed"));
+  });
+  return soundDbPromise;
+}
+
+async function readSoundRecordsForUser(userId) {
+  try {
+    const db = await openSoundDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(SOUND_STORE_NAME, "readonly");
+      const store = tx.objectStore(SOUND_STORE_NAME);
+      const index = store.index("userId");
+      const request = index.getAll(userId);
+      request.onsuccess = () => resolve((request.result || []).sort((a, b) => a.createdAt - b.createdAt));
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.warn("readSoundRecordsForUser error:", error);
+    return [];
+  }
+}
+
+async function writeSoundRecord(record) {
+  const db = await openSoundDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(SOUND_STORE_NAME, "readwrite");
+    tx.objectStore(SOUND_STORE_NAME).put(record);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function deleteSoundRecord(id) {
+  const db = await openSoundDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(SOUND_STORE_NAME, "readwrite");
+    tx.objectStore(SOUND_STORE_NAME).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadSoundsForCurrentUser() {
+  if (!currentUser?.id) {
+    soundRecords = [];
+    renderSoundsUi();
+    return;
+  }
+  soundRecords = await readSoundRecordsForUser(currentUser.id);
+  renderSoundsUi();
+  updateSoundPlayback();
+}
+
+function renderSoundsUi() {
+  if (soundsEnabledInput) soundsEnabledInput.checked = soundsEnabled;
+  if (soundVolumeInput) soundVolumeInput.value = String(soundVolume);
+  if (soundsTabBadgeNode) soundsTabBadgeNode.textContent = String(soundRecords.length);
+  if (soundsStatusNode) {
+    if (!soundRecords.length) {
+      soundsStatusNode.textContent = "Р—Р°РїРёСЃРµР№ РїРѕРєР° РЅРµС‚.";
+    } else if (soundsEnabled) {
+      soundsStatusNode.textContent = "Р—РІСѓРєРё РІРєР»СЋС‡РµРЅС‹. РќР° С‚РµР»РµС„РѕРЅРµ РёРЅРѕРіРґР° РЅСѓР¶РЅРѕ РЅР°Р¶Р°С‚СЊ РїРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ РїРѕСЃР»Рµ РІРѕР·РІСЂР°С‚Р° РЅР° СЃР°Р№С‚.";
+    } else {
+      soundsStatusNode.textContent = "Р—РІСѓРєРё РІС‹РєР»СЋС‡РµРЅС‹.";
+    }
+  }
+  if (!soundsListNode) return;
+  soundsListNode.innerHTML = "";
+  if (!soundRecords.length) {
+    const empty = document.createElement("div");
+    empty.className = "sounds-empty";
+    empty.textContent = "Р”РѕР±Р°РІСЊС‚Рµ Р°СѓРґРёРѕС„Р°Р№Р»С‹, Рё РѕРЅРё РѕСЃС‚Р°РЅСѓС‚СЃСЏ РїРѕСЃР»Рµ РѕР±РЅРѕРІР»РµРЅРёСЏ СЃС‚СЂР°РЅРёС†С‹.";
+    soundsListNode.appendChild(empty);
+    return;
+  }
+  for (const record of soundRecords) {
+    const item = document.createElement("div");
+    item.className = "sound-item";
+    const meta = document.createElement("div");
+    meta.className = "sound-item-meta";
+    const name = document.createElement("div");
+    name.className = "sound-item-name";
+    name.textContent = record.name || "audio";
+    const sub = document.createElement("div");
+    sub.className = "sound-item-sub";
+    sub.textContent = formatBytes(record.size);
+    meta.appendChild(name);
+    meta.appendChild(sub);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "РЈРґР°Р»РёС‚СЊ";
+    remove.addEventListener("click", async () => {
+      await deleteSoundRecord(record.id);
+      soundRecords = soundRecords.filter((itemRecord) => itemRecord.id !== record.id);
+      soundCurrentIndex = 0;
+      renderSoundsUi();
+      updateSoundPlayback();
+    });
+    item.appendChild(meta);
+    item.appendChild(remove);
+    soundsListNode.appendChild(item);
+  }
+}
+
+function stopSoundLoop() {
+  soundPlayer.pause();
+  soundPlayer.removeAttribute("src");
+  soundPlayer.load();
+  if (soundCurrentUrl) URL.revokeObjectURL(soundCurrentUrl);
+  soundCurrentUrl = null;
+  isSoundLoopStarting = false;
+}
+
+function playNextSound() {
+  if (!soundsEnabled || !soundRecords.length) {
+    stopSoundLoop();
+    return;
+  }
+  const record = soundRecords[soundCurrentIndex % soundRecords.length];
+  soundCurrentIndex = (soundCurrentIndex + 1) % soundRecords.length;
+  if (soundCurrentUrl) URL.revokeObjectURL(soundCurrentUrl);
+  soundCurrentUrl = URL.createObjectURL(record.blob);
+  soundPlayer.src = soundCurrentUrl;
+  soundPlayer.volume = soundVolume;
+  soundPlayer.play().catch((error) => {
+    console.warn("sound playback blocked:", error);
+    stopSoundLoop();
+    if (soundsStatusNode) {
+      soundsStatusNode.textContent = "Р‘СЂР°СѓР·РµСЂ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°Р» Р°РІС‚РѕР·Р°РїСѓСЃРє. РћС‚РєСЂРѕР№С‚Рµ РІРєР»Р°РґРєСѓ Рё РЅР°Р¶РјРёС‚Рµ РїРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ Р·РІСѓРєРѕРІ.";
+    }
+  });
+}
+
+function updateSoundPlayback() {
+  soundPlayer.volume = soundVolume;
+  if (!soundsEnabled || !soundRecords.length) {
+    stopSoundLoop();
+    return;
+  }
+  if (isSoundLoopStarting || !soundPlayer.paused) return;
+  isSoundLoopStarting = true;
+  playNextSound();
+  isSoundLoopStarting = false;
+}
+
+soundPlayer.addEventListener("ended", playNextSound);
+
+function insertHistoryPoint(timestamp, value) {
+  history.push({ t: timestamp, y: value });
+  history.sort((a, b) => a.t - b.t);
+  lastPointAt = Math.max(lastPointAt, timestamp);
+  const minAllowed = Date.now() - maxHistoryMs;
+  while (history.length > 2 && history[1].t < minAllowed) {
+    history.shift();
+  }
+}
+
+function applyTaskScore(deltaPoints, timestamp) {
+  const nextPoints = Math.max(0, totalPoints + deltaPoints);
+  totalPoints = nextPoints;
+  previousValue = currentValue;
+  currentValue = -(nextPoints / valueStepPerGrid) * gridStepPx;
+  insertHistoryPoint(timestamp, currentValue);
+  addHistoryPoint(Date.now());
+  initLiveLine();
+  renderLevelsUi();
+  updateHud();
+  render();
+}
+
+function getDueTasks(now = Date.now()) {
+  if (!tasksGlobalEnabled) return [];
+  const today = getLocalDateKey(now);
+  return tasks
+    .filter((task) => {
+      if (!task.enabled) return false;
+      if (task.reports?.[today]) return false;
+      return getScheduledTimestampForDate(task.time, now) <= now;
+    })
+    .sort((a, b) => a.time.localeCompare(b.time));
+}
+
+function checkDueTasks(force = false) {
+  if (!currentUser || !isProgressLoaded) return;
+  const now = Date.now();
+  if (!force && now - lastTaskCheckAt < 5000) return;
+  lastTaskCheckAt = now;
+  if (activeTaskReport) return;
+  taskReportQueue = getDueTasks(now);
+  openNextTaskReport();
+}
+
+function openNextTaskReport() {
+  if (activeTaskReport || !taskReportModalNode) return;
+  const next = taskReportQueue.shift();
+  if (!next) return;
+  activeTaskReport = next;
+  const scheduledAt = getScheduledTimestampForDate(next.time);
+  taskReportTimeNode.textContent = `Нужно было выполнить: ${formatOpenTime(scheduledAt)}`;
+  taskReportNameNode.textContent = next.title;
+  taskReportDescriptionNode.textContent = next.description || "";
+  taskReportDescriptionNode.classList.toggle("hidden", !next.description);
+  taskReportPointsNode.textContent = `Да: +${next.reward} · Нет: -${next.penalty} · Игнор: 0`;
+  taskReportModalNode.classList.remove("hidden");
+}
+
+function closeTaskReportModal() {
+  taskReportModalNode?.classList.add("hidden");
+  activeTaskReport = null;
+}
+
+function answerActiveTask(status) {
+  if (!activeTaskReport) return;
+  const task = tasks.find((item) => item.id === activeTaskReport.id);
+  if (!task) {
+    closeTaskReportModal();
+    openNextTaskReport();
+    return;
+  }
+  const now = Date.now();
+  const dateKey = getLocalDateKey(now);
+  const scheduledAt = getScheduledTimestampForDate(task.time, now);
+  task.reports = task.reports && typeof task.reports === "object" ? task.reports : {};
+  task.reports[dateKey] = { status, answeredAt: now, scheduledAt };
+  if (status === "done") applyTaskScore(task.reward, scheduledAt);
+  if (status === "failed") applyTaskScore(-task.penalty, scheduledAt);
+  closeTaskReportModal();
+  saveProgressForCurrentUser();
+  renderTasksUi();
+  openNextTaskReport();
 }
 
 function initLiveLine() {
@@ -475,7 +1068,7 @@ function findCandleByScreenX(screenX) {
 
 function closeMobilePanels() {
   if (mobileOverlayNode) mobileOverlayNode.classList.add("hidden");
-  for (const node of [modesNode, timeframeNode, viewTypesNode, candleTimeframesNode, commentControlsNode, dataControlsNode, authPanelNode, levelsPanelNode]) {
+  for (const node of [modesNode, timeframeNode, viewTypesNode, candleTimeframesNode, commentControlsNode, tasksTabNode, soundsTabNode, dataControlsNode, authPanelNode, levelsPanelNode]) {
     node?.classList.remove("mobile-open");
   }
 }
@@ -488,6 +1081,8 @@ function openMobilePanel(id) {
     viewTypes: viewTypesNode,
     candleTimeframes: candleTimeframesNode,
     commentControls: commentControlsNode,
+    tasksTab: tasksTabNode,
+    soundsTab: soundsTabNode,
     dataControls: dataControlsNode,
     authPanel: authPanelNode,
     levelsPanel: levelsPanelNode,
@@ -501,28 +1096,6 @@ function openMobilePanel(id) {
 function setShareLink(text) {
   if (!shareLinkNode) return;
   shareLinkNode.textContent = text;
-}
-
-async function detectLocalIpsViaWebRTC() {
-  if (!("RTCPeerConnection" in window)) return [];
-  const ips = new Set();
-  const pc = new RTCPeerConnection({ iceServers: [] });
-  try {
-    pc.createDataChannel("x");
-    pc.onicecandidate = (event) => {
-      const cand = event.candidate?.candidate || "";
-      const match = cand.match(/(\d{1,3}(?:\.\d{1,3}){3})/);
-      if (match) ips.add(match[1]);
-    };
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-  } catch (_e) {
-    // ignore
-  } finally {
-    pc.close();
-  }
-  return Array.from(ips);
 }
 
 function addHistoryPoint(timestamp) {
@@ -990,6 +1563,7 @@ function frame(now) {
   } else {
     pendingVerticalDelta = 0;
   }
+  checkDueTasks();
   addHistoryPoint(Date.now());
   if (currentUser && now - lastAutosaveAt >= AUTOSAVE_MS) {
     saveProgressForCurrentUser();
@@ -1233,11 +1807,94 @@ toggleCommentsBtn.addEventListener("click", () => {
   render();
 });
 
+openTasksBtn?.addEventListener("click", openTasksPage);
+closeTasksBtn?.addEventListener("click", closeTasksPage);
+openSoundsBtn?.addEventListener("click", openSoundsPage);
+closeSoundsBtn?.addEventListener("click", closeSoundsPage);
+
+tasksGlobalEnabledInput?.addEventListener("change", () => {
+  tasksGlobalEnabled = tasksGlobalEnabledInput.checked;
+  saveProgressForCurrentUser();
+  renderTasksUi();
+  if (tasksGlobalEnabled) checkDueTasks(true);
+});
+
+soundsEnabledInput?.addEventListener("change", () => {
+  soundsEnabled = soundsEnabledInput.checked;
+  saveProgressForCurrentUser();
+  renderSoundsUi();
+  updateSoundPlayback();
+});
+
+soundVolumeInput?.addEventListener("input", () => {
+  soundVolume = Math.max(0, Math.min(1, Number(soundVolumeInput.value) || 0));
+  soundPlayer.volume = soundVolume;
+});
+
+soundVolumeInput?.addEventListener("change", () => {
+  soundVolume = Math.max(0, Math.min(1, Number(soundVolumeInput.value) || 0));
+  saveProgressForCurrentUser();
+  renderSoundsUi();
+});
+
+soundFileInput?.addEventListener("change", async (event) => {
+  const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("audio/"));
+  if (!files.length || !currentUser?.id) return;
+  for (const file of files) {
+    const record = {
+      id: createSoundId(),
+      userId: currentUser.id,
+      name: file.name,
+      type: file.type || "audio/mpeg",
+      size: file.size,
+      createdAt: Date.now(),
+      blob: file,
+    };
+    await writeSoundRecord(record);
+    soundRecords.push(record);
+  }
+  soundRecords.sort((a, b) => a.createdAt - b.createdAt);
+  soundFileInput.value = "";
+  saveProgressForCurrentUser();
+  renderSoundsUi();
+  updateSoundPlayback();
+});
+
+taskFormNode?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const task = normalizeTask({
+    title: taskTitleInput?.value,
+    description: taskDescriptionInput?.value,
+    reward: Number(taskRewardInput?.value),
+    penalty: Number(taskPenaltyInput?.value),
+    time: taskTimeInput?.value,
+    enabled: true,
+    reports: {},
+  });
+  if (!task) return;
+  tasks = tasks.concat(task).sort((a, b) => a.time.localeCompare(b.time));
+  taskFormNode.reset();
+  saveProgressForCurrentUser();
+  renderTasksUi();
+  checkDueTasks(true);
+});
+
+taskDoneBtn?.addEventListener("click", () => answerActiveTask("done"));
+taskFailedBtn?.addEventListener("click", () => answerActiveTask("failed"));
+taskIgnoreBtn?.addEventListener("click", () => answerActiveTask("ignored"));
+
+currentLevelToggleNode?.addEventListener("click", () => {
+  levelsExpanded = !levelsExpanded;
+  renderLevelsUi();
+  layoutControls();
+});
+
 addLevelBtn?.addEventListener("click", () => {
   const name = String(levelNameInput?.value || "").trim().slice(0, 30);
   const ptsRaw = Number(levelPointsInput?.value);
   const pts = Math.max(0, Math.floor(toSafeNumber(ptsRaw, NaN)));
   if (!name || !Number.isFinite(pts)) return;
+  levelsExpanded = true;
   levels = levels.concat([{ name, points: pts }]).sort((a, b) => a.points - b.points);
   if (levelNameInput) levelNameInput.value = "";
   if (levelPointsInput) levelPointsInput.value = "";
@@ -1294,108 +1951,71 @@ candleCommentDeleteBtn?.addEventListener("click", () => {
   render();
 });
 
-function exportData() {
-  const payload = getSnapshot();
-  payload.exportedAt = Date.now();
-  payload.account = currentUser;
-
-  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  link.href = url;
-  link.download = `graph-export-${stamp}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function importData(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(String(reader.result || "{}"));
-      const ok = applySnapshot(parsed);
-      if (!ok) {
-        window.alert("Файл импорта пустой или неверный.");
-        return;
-      }
-      saveProgressForCurrentUser();
-      updateHud();
-      render();
-    } catch (_error) {
-      window.alert("Не удалось прочитать файл импорта.");
-    }
-  };
-  reader.readAsText(file);
-}
-
-exportBtn.addEventListener("click", exportData);
-
-importBtn.addEventListener("click", () => {
-  importInput.value = "";
-  importInput.click();
-});
-
-importInput.addEventListener("change", (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  importData(file);
-});
-
 window.addEventListener("beforeunload", () => {
-  saveProgressForCurrentUser();
+  const snapshot = saveLocalProgressForCurrentUser();
+  if (snapshot) pendingCloudSaveSnapshot = snapshot;
+  saveProgressForCurrentUser(snapshot);
+});
+
+window.addEventListener("pagehide", () => {
+  saveLocalProgressForCurrentUser();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    saveLocalProgressForCurrentUser();
+  }
 });
 
 registerBtn.addEventListener("click", async () => {
-  const username = normalizeUsername(authUsernameInput.value);
-  const password = String(authPasswordInput.value || "");
-  if (username.length < 3) {
-    window.alert("Логин должен быть минимум 3 символа.");
+  const email = authEmail.value;
+  const password = authPassword.value;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) {
+    authStatus.textContent = "Ошибка регистрации: " + error.message;
     return;
   }
-  if (password.length < 4) {
-    window.alert("Пароль должен быть минимум 4 символа.");
-    return;
-  }
-  try {
-    await apiJson("POST", "/api/register", { username, password });
-    await apiJson("POST", "/api/login", { username, password });
-    currentUser = username;
-    authPasswordInput.value = "";
-    setAuthUiState();
-    await saveProgressForCurrentUser();
-  } catch (e) {
-    if (e?.data?.error === "user_exists") window.alert("Такой пользователь уже существует.");
-    else window.alert("Не удалось зарегистрироваться.");
-  }
+
+  authStatus.textContent = "Регистрация успешна. Проверьте email.";
 });
 
 loginBtn.addEventListener("click", async () => {
-  const username = normalizeUsername(authUsernameInput.value);
-  const password = String(authPasswordInput.value || "");
-  try {
-    const data = await apiJson("POST", "/api/login", { username, password });
-    currentUser = data?.user || username;
-    const progress = await apiJson("GET", "/api/progress");
-    if (progress?.progress) {
-      applySnapshot(progress.progress);
-      updateHud();
-    }
-    authPasswordInput.value = "";
-    setAuthUiState();
-    render();
-  } catch (_e) {
-    window.alert("Неверный логин или пароль.");
+  const email = authEmail.value;
+  const password = authPassword.value;
+  isProgressLoaded = false;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    authStatus.textContent = "Ошибка входа: " + error.message;
+    return;
   }
+
+  currentUser = data.user;
+  authStatus.textContent = "Вы вошли: " + currentUser.email;
+  await loadCurrentUserData(data.session);
 });
 
 logoutBtn.addEventListener("click", async () => {
   await saveProgressForCurrentUser();
-  try { await apiJson("POST", "/api/logout"); } catch (_e) { /* ignore */ }
+  await supabase.auth.signOut();
   currentUser = null;
+  lastSessionUserId = null;
+  isProgressLoaded = false;
+  soundRecords = [];
+  soundsEnabled = false;
+  stopSoundLoop();
+  authStatus.textContent = "Вы вышли";
   setAuthUiState();
+  renderSoundsUi();
 });
 
 resizeCanvas();
@@ -1403,30 +2023,106 @@ initLiveLine();
 addHistoryPoint(Date.now());
 layoutControls();
 renderLevelsUi();
+renderTasksUi();
+renderSoundsUi();
 if (location.protocol.startsWith("http")) {
   setShareLink(`Ссылка: ${location.origin}/`);
-  detectLocalIpsViaWebRTC().then((ips) => {
-    if (!ips.length) return;
-    const port = location.port || (location.protocol === "https:" ? "443" : "80");
-    const list = ips.map((ip) => `http://${ip}:${port}/`).join(" · ");
-    setShareLink(`Ссылка: ${list}`);
-  });
 } else {
-  setShareLink("Ссылка: запустите через сервер (npm run start)");
+  setShareLink("Ссылка: опубликуйте сайт на Netlify");
 }
-(async () => {
+
+async function loadCurrentUserData(session = null) {
+  const loadToken = ++latestLoadToken;
+  isProgressLoaded = false;
   try {
-    const me = await apiJson("GET", "/api/me");
-    if (me?.user) {
-      currentUser = me.user;
-      const progress = await apiJson("GET", "/api/progress");
-      if (progress?.progress) applySnapshot(progress.progress);
+    let activeSession = session;
+    if (!activeSession) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log("Supabase getSession result:", sessionData, sessionError);
+      if (sessionError) throw sessionError;
+      activeSession = sessionData?.session || null;
     }
-  } catch (_e) {
-    // ignore
+    if (loadToken !== latestLoadToken) return;
+    const user = activeSession?.user || null;
+    console.log("Supabase session user result:", user);
+    if (!user) {
+      lastSessionUserId = null;
+      currentUser = null;
+      soundRecords = [];
+      soundsEnabled = false;
+      setAuthUiState();
+      renderSoundsUi();
+      updateHud();
+      setMode("live");
+      return;
+    }
+    lastSessionUserId = user.id;
+    currentUser = user;
+    setAuthUiState();
+    const { data, error } = await supabase
+      .from("user_data")
+      .select("data")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    console.log("loadUserData result:", { userId: user.id, data, error });
+    if (error) throw error;
+    if (loadToken !== latestLoadToken) return;
+    const localSnapshot = readLocalSnapshotForUser(user.id);
+    const newestSnapshot = getNewestSnapshot(data?.data, localSnapshot);
+    if (newestSnapshot) {
+      isApplyingRemoteProgress = true;
+      applySnapshot(newestSnapshot);
+      isApplyingRemoteProgress = false;
+      updateHud();
+    }
+    isProgressLoaded = true;
+    if (newestSnapshot && newestSnapshot === localSnapshot && getSnapshotSavedAt(localSnapshot) > getSnapshotSavedAt(data?.data)) {
+      saveProgressForCurrentUser(localSnapshot);
+    }
+    await loadSoundsForCurrentUser();
+    setAuthUiState();
+    render();
+    checkDueTasks(true);
+  } catch (error) {
+    console.error("loadUserData error:", error);
+    isApplyingRemoteProgress = false;
+    if (currentUser?.id) {
+      const localSnapshot = readLocalSnapshotForUser(currentUser.id);
+      if (localSnapshot) {
+        isApplyingRemoteProgress = true;
+        applySnapshot(localSnapshot);
+        isApplyingRemoteProgress = false;
+      }
+      await loadSoundsForCurrentUser();
+      isProgressLoaded = true;
+    } else {
+      isProgressLoaded = false;
+    }
+    setAuthUiState();
   }
-  setAuthUiState();
-  updateHud();
-  setMode("live");
-})();
+}
+async function initializeAuth() {
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    console.log("Supabase initializeAuth getSession:", sessionData, sessionError);
+    if (sessionError) throw sessionError;
+    await loadCurrentUserData(sessionData?.session || null);
+  } catch (error) {
+    console.error("Supabase initializeAuth error:", error);
+    await loadCurrentUserData();
+  }
+}
+initializeAuth();
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log("Supabase auth state change:", event, session);
+  const sessionUserId = session?.user?.id || null;
+  if (sessionUserId === lastSessionUserId && currentUser?.id === sessionUserId && isProgressLoaded) {
+    return;
+  }
+  if (!sessionUserId && !lastSessionUserId && !currentUser) {
+    return;
+  }
+  loadCurrentUserData(session);
+});
+setMode("live");
 requestAnimationFrame(frame);

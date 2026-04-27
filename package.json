@@ -4,12 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "cookie-parser": "^1.4.7",
-    "express": "^4.21.2"
+    "build": "node generate-config.mjs",
+    "dev": "npx serve ."
   }
 }
 

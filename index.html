@@ -3,23 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Линия с управлением мышью</title>
+  <title>Productiv Line</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="scene"></canvas>
-
-  <div class="mobile-toolbar hidden" id="mobileToolbar">
-    <button type="button" data-mobile-open="modes">Режим</button>
-    <button type="button" data-mobile-open="timeframes">ТФ</button>
-    <button type="button" data-mobile-open="viewTypes">Тип</button>
-    <button type="button" data-mobile-open="candleTimeframes">Свечи</button>
-    <button type="button" data-mobile-open="commentControls">Коммент</button>
-    <button type="button" data-mobile-open="dataControls">Данные</button>
-    <button type="button" data-mobile-open="authPanel">Акк</button>
-    <button type="button" data-mobile-open="levelsPanel">Уровни</button>
+  <div class="pc-only-warning hidden" id="pcOnlyWarning">
+    Этот режим доступен только на ПК. Откройте сайт на компьютере.
   </div>
-  <div class="mobile-overlay hidden" id="mobileOverlay" data-mobile-close="1"></div>
+  <canvas id="scene"></canvas>
+  <header class="app-brand hidden" id="appBrand">
+    <div class="app-brand-title">Productiv Line</div>
+    <div class="app-brand-subtitle">Очки, привычки и живая линия прогресса</div>
+  </header>
 
   <div class="modes" id="modes">
     <button data-mode="live" class="active">Лайв</button>
@@ -48,6 +43,13 @@
     <button id="addCommentBtn" type="button">Комментарий к свече</button>
     <button id="toggleCommentsBtn" type="button">Скрыть комментарии</button>
   </div>
+  <div class="tasks-tab hidden" id="tasksTab">
+    <button id="openTasksBtn" type="button">Задания <span id="tasksTabBadge">0</span></button>
+  </div>
+
+  <div class="sounds-tab hidden" id="soundsTab">
+    <button id="openSoundsBtn" type="button">Р—РІСѓРєРё <span id="soundsTabBadge">0</span></button>
+  </div>
 
   <div class="modal hidden" id="candleCommentModal" role="dialog" aria-modal="true" aria-labelledby="candleCommentTitle">
     <div class="modal-backdrop" data-close-modal="1"></div>
@@ -62,40 +64,126 @@
       </div>
     </div>
   </div>
+  <section class="tasks-page hidden" id="tasksPage">
+    <div class="tasks-page-header">
+      <div>
+        <div class="tasks-page-title">Задания</div>
+        <div class="tasks-page-subtitle">Настройка задач по времени и баллам</div>
+      </div>
+      <button id="closeTasksBtn" type="button">Закрыть</button>
+    </div>
+    <div class="tasks-global-row">
+      <span>Все задания</span>
+      <label class="switch">
+        <input id="tasksGlobalEnabled" type="checkbox" checked>
+        <span></span>
+      </label>
+    </div>
+    <div class="tasks-summary" id="tasksSummary">
+      <div>
+        <span>Активные</span>
+        <strong id="activeTasksCount">0</strong>
+      </div>
+      <div>
+        <span>Ожидают отчета</span>
+        <strong id="dueTasksCount">0</strong>
+      </div>
+      <div>
+        <span>Ближайшее</span>
+        <strong id="nextTaskTime">—</strong>
+      </div>
+    </div>
+    <form class="task-form" id="taskForm">
+      <input id="taskTitleInput" type="text" maxlength="60" placeholder="Название задачи *" required>
+      <textarea id="taskDescriptionInput" rows="3" maxlength="300" placeholder="Описание"></textarea>
+      <div class="task-form-grid">
+        <input id="taskRewardInput" type="number" min="0" step="1" placeholder="Баллы за выполнение">
+        <input id="taskPenaltyInput" type="number" min="0" step="1" placeholder="Минус за невыполнение">
+        <input id="taskTimeInput" type="time" required>
+      </div>
+      <button type="submit">Добавить задание</button>
+    </form>
+    <div class="tasks-list" id="tasksList"></div>
+  </section>
+  <section class="sounds-page hidden" id="soundsPage">
+    <div class="sounds-page-header">
+      <div>
+        <div class="sounds-page-title">Р—РІСѓРєРё</div>
+        <div class="sounds-page-subtitle">РђСѓРґРёРѕР·Р°РїРёСЃРё РґР»СЏ С„РѕРЅРѕРІРѕРіРѕ РІРѕСЃРїСЂРѕРёР·РІРµРґРµРЅРёСЏ</div>
+      </div>
+      <button id="closeSoundsBtn" type="button">Р—Р°РєСЂС‹С‚СЊ</button>
+    </div>
+    <div class="sounds-global-row">
+      <span>РџСЂРѕРёРіСЂС‹РІР°С‚СЊ Р·РІСѓРєРё</span>
+      <label class="switch">
+        <input id="soundsEnabled" type="checkbox">
+        <span></span>
+      </label>
+    </div>
+    <div class="sounds-controls">
+      <label>
+        <span>Р“СЂРѕРјРєРѕСЃС‚СЊ</span>
+        <input id="soundVolumeInput" type="range" min="0" max="1" step="0.05" value="0.65">
+      </label>
+      <label class="sound-upload">
+        <span>Р”РѕР±Р°РІРёС‚СЊ Р°СѓРґРёРѕ</span>
+        <input id="soundFileInput" type="file" accept="audio/*" multiple>
+      </label>
+      <div id="soundsStatus" class="sounds-status">Р—Р°РїРёСЃРµР№ РїРѕРєР° РЅРµС‚.</div>
+    </div>
+    <div class="sounds-list" id="soundsList"></div>
+  </section>
+  <div class="modal hidden" id="taskReportModal" role="dialog" aria-modal="true" aria-labelledby="taskReportTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card task-report-card">
+      <div class="modal-title" id="taskReportTitle">Отчет по заданию</div>
+      <div class="modal-subtitle" id="taskReportTime">—</div>
+      <div class="task-report-name" id="taskReportName">—</div>
+      <div class="task-report-description" id="taskReportDescription"></div>
+      <div class="task-report-points" id="taskReportPoints">—</div>
+      <div class="task-report-actions">
+        <button id="taskDoneBtn" type="button" class="success">Да</button>
+        <button id="taskFailedBtn" type="button" class="danger">Нет</button>
+        <button id="taskIgnoreBtn" type="button">Игнорировать</button>
+      </div>
+    </div>
+  </div>
   <div class="data-controls" id="dataControls">
-    <button id="exportBtn" type="button">Экспорт</button>
-    <button id="importBtn" type="button">Импорт</button>
-    <input id="importInput" type="file" accept="application/json" class="hidden">
     <div class="share-link" id="shareLink">Ссылка: —</div>
   </div>
   <div class="auth-panel" id="authPanel">
-    <div class="auth-row">
-      <input id="authUsername" type="text" placeholder="Логин">
-      <input id="authPassword" type="password" placeholder="Пароль">
-    </div>
-    <div class="auth-row">
-      <button id="registerBtn" type="button">Регистрация</button>
-      <button id="loginBtn" type="button">Вход</button>
-      <button id="logoutBtn" type="button" class="hidden">Выход</button>
-    </div>
-    <div class="auth-status" id="authStatus">Гость</div>
+    <input id="authEmail" type="email" placeholder="Email">
+    <input id="authPassword" type="password" placeholder="Пароль">
+    <button id="registerBtn" type="button">Регистрация</button>
+    <button id="loginBtn" type="button">Войти</button>
+    <button id="logoutBtn" type="button">Выйти</button>
+    <div id="authStatus"></div>
   </div>
 
   <div class="levels-panel" id="levelsPanel">
     <div class="levels-title">Уровни</div>
-    <div class="levels-stats">
-      Очки: <span id="pointsValue">0</span> · Уровень: <span id="levelName">—</span>
-    </div>
+    <button class="current-level-card" id="currentLevelToggle" type="button" aria-expanded="false" aria-controls="levelsDetails">
+      <span class="current-level-main">
+        <span class="current-level-label">Мой текущий уровень</span>
+        <span class="current-level-name" id="levelName">—</span>
+      </span>
+      <span class="current-level-side">
+        <span id="currentLevelPoints">0 очк.</span>
+        <span class="current-level-chevron" id="currentLevelChevron">⌄</span>
+      </span>
+    </button>
     <div class="levels-progress">
       <div class="levels-progress-bar" id="levelProgressBar"></div>
     </div>
     <div class="levels-next" id="nextLevelHint">Добавьте уровни для мотивации.</div>
-    <div class="levels-editor">
-      <input id="levelNameInput" type="text" placeholder="Название уровня">
-      <input id="levelPointsInput" type="number" min="0" step="1" placeholder="Очков нужно">
-      <button id="addLevelBtn" type="button">Добавить</button>
+    <div class="levels-details" id="levelsDetails" hidden>
+      <div class="levels-editor">
+        <input id="levelNameInput" type="text" placeholder="Название уровня">
+        <input id="levelPointsInput" type="number" min="0" step="1" placeholder="Очков нужно">
+        <button id="addLevelBtn" type="button">Добавить</button>
+      </div>
+      <div class="levels-list" id="levelsList"></div>
     </div>
-    <div class="levels-list" id="levelsList"></div>
   </div>
   <div class="stats" id="stats">
     <div>Значение Y: <span id="valueY">0.00</span></div>
@@ -105,6 +193,7 @@
     Зажмите левую кнопку мыши и ведите курсор вверх/вниз, чтобы менять направление.
   </div>
   <div class="clock" id="clock">00:00.00</div>
-  <script src="script.js"></script>
+  <script src="env.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>

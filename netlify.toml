@@ -1,4 +1,5 @@
 [build]
+  command = "node generate-config.mjs"
   publish = "."
 
-# Static site: index.html + script.js + style.css
+# Static site with Supabase auth.
