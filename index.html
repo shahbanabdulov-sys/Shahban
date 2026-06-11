@@ -5,12 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Productiv Line</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="site-nav.css">
 </head>
-<body>
+<body class="site-page-main">
+  <nav class="site-switcher" aria-label="Site switcher">
+    <a class="site-switcher__link" href="index.html#line" data-app-tab="line" aria-current="page">Productiv Line</a>
+    <a class="site-switcher__link" href="index.html#tracker" data-app-tab="tracker">Tracker</a>
+  </nav>
+  <main id="productivApp" class="productiv-app-tab">
   <div class="pc-only-warning hidden" id="pcOnlyWarning">
     Этот режим доступен только на ПК. Откройте сайт на компьютере.
   </div>
   <canvas id="scene"></canvas>
+  <nav class="mobile-toolbar hidden" id="mobileToolbar" aria-label="Мобильная навигация">
+    <button type="button" data-mobile-open="modes" aria-label="Выбрать режим">Режим</button>
+    <button type="button" data-mobile-open="timeframes" aria-label="Выбрать период линии">Период</button>
+    <button type="button" data-mobile-open="viewTypes" aria-label="Выбрать вид графика">Вид</button>
+    <button type="button" data-mobile-open="candleTimeframes" aria-label="Выбрать период свечей">Свечи</button>
+    <button type="button" data-mobile-open="commentControls" aria-label="Комментарии к свечам">Коммент.</button>
+    <button type="button" data-mobile-open="tasksTab" aria-label="Открыть задачи">Задачи</button>
+    <button type="button" data-mobile-open="disciplineTab" aria-label="Открыть дисциплину">Дисциплина</button>
+    <button type="button" data-mobile-open="soundsTab" aria-label="Открыть звуки">Звуки</button>
+    <button type="button" data-mobile-open="levelsPanel" aria-label="Настроить уровни">Уровни</button>
+    <button type="button" data-mobile-open="dataControls" aria-label="Ссылка на сайт">Ссылка</button>
+    <button type="button" data-mobile-open="authPanel" aria-label="Аккаунт">Аккаунт</button>
+  </nav>
+  <div class="mobile-overlay hidden" id="mobileOverlay"></div>
   <header class="app-brand hidden" id="appBrand">
     <div class="app-brand-title">Productiv Line</div>
     <div class="app-brand-subtitle">Очки, привычки и живая линия прогресса</div>
@@ -44,11 +64,15 @@
     <button id="toggleCommentsBtn" type="button">Скрыть комментарии</button>
   </div>
   <div class="tasks-tab hidden" id="tasksTab">
-    <button id="openTasksBtn" type="button">Задания <span id="tasksTabBadge">0</span></button>
+    <button id="openTasksBtn" type="button">Задачи <span id="tasksTabBadge">0</span></button>
+  </div>
+
+  <div class="discipline-tab hidden" id="disciplineTab">
+    <button id="openDisciplineBtn" type="button">Дисциплина <span id="disciplineTabBadge">0</span></button>
   </div>
 
   <div class="sounds-tab hidden" id="soundsTab">
-    <button id="openSoundsBtn" type="button">Р—РІСѓРєРё <span id="soundsTabBadge">0</span></button>
+    <button id="openSoundsBtn" type="button">Звуки <span id="soundsTabBadge">0</span></button>
   </div>
 
   <div class="modal hidden" id="candleCommentModal" role="dialog" aria-modal="true" aria-labelledby="candleCommentTitle">
@@ -65,56 +89,161 @@
     </div>
   </div>
   <section class="tasks-page hidden" id="tasksPage">
-    <div class="tasks-page-header">
-      <div>
-        <div class="tasks-page-title">Задания</div>
-        <div class="tasks-page-subtitle">Настройка задач по времени и баллам</div>
+    <div class="tasks-workspace">
+      <div class="tasks-page-header">
+        <div>
+          <div class="tasks-page-kicker">План и результат</div>
+          <div class="tasks-page-title">Задачи</div>
+          <div class="tasks-page-subtitle">Все важное на одном экране: что впереди, что требует ответа и как идет марафон.</div>
+        </div>
+        <button id="closeTasksBtn" type="button" class="tasks-close-button" aria-label="Закрыть задачи">Закрыть</button>
       </div>
-      <button id="closeTasksBtn" type="button">Закрыть</button>
+
+      <div class="tasks-overview">
+        <div class="tasks-global-row">
+          <div>
+            <strong>Напоминания о задачах</strong>
+            <span>Один переключатель для обычных задач и марафонов</span>
+          </div>
+          <label class="switch" aria-label="Включить или выключить все задачи">
+            <input id="tasksGlobalEnabled" type="checkbox" checked>
+            <span></span>
+          </label>
+        </div>
+        <div class="tasks-summary" id="tasksSummary">
+          <div class="tasks-stat-card">
+            <span>Активно сейчас</span>
+            <strong id="activeTasksCount">0</strong>
+          </div>
+          <div class="tasks-stat-card is-attention">
+            <span>Ждут ответа</span>
+            <strong id="dueTasksCount">0</strong>
+          </div>
+          <div class="tasks-stat-card is-next">
+            <span>Следующая задача</span>
+            <strong id="nextTaskTime">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="tasks-layout">
+        <section class="tasks-panel">
+          <div class="tasks-section-heading">
+            <div>
+              <div class="tasks-section-kicker">Каждый день</div>
+              <div class="tasks-section-title">Обычные задачи</div>
+              <div class="tasks-section-note">Создайте повторяющуюся задачу и укажите время проверки.</div>
+            </div>
+            <span class="tasks-section-count" id="regularTasksCount">0</span>
+          </div>
+          <form class="task-form task-creator" id="taskForm">
+            <label class="task-field">
+              <span>Название</span>
+              <input id="taskTitleInput" type="text" maxlength="60" placeholder="Например, тренировка" required>
+            </label>
+            <label class="task-field">
+              <span>Описание</span>
+              <textarea id="taskDescriptionInput" rows="3" maxlength="300" placeholder="Что именно нужно сделать"></textarea>
+            </label>
+            <div class="task-form-grid">
+              <label class="task-field">
+                <span>Награда</span>
+                <input id="taskRewardInput" type="number" min="0" step="1" placeholder="+ баллы">
+              </label>
+              <label class="task-field">
+                <span>Штраф</span>
+                <input id="taskPenaltyInput" type="number" min="0" step="1" placeholder="- баллы">
+              </label>
+              <label class="task-field">
+                <span>Время отчета</span>
+                <input id="taskTimeInput" type="time" required>
+              </label>
+            </div>
+            <button type="submit" class="task-primary-button">Создать задачу</button>
+          </form>
+          <div class="tasks-list" id="tasksList"></div>
+        </section>
+
+        <section class="tasks-panel tasks-panel-marathon">
+          <div class="tasks-section-heading">
+            <div>
+              <div class="tasks-section-kicker">Длинная дистанция</div>
+              <div class="tasks-section-title">Марафон</div>
+              <div class="tasks-section-note">Соберите задачи на несколько дней и наблюдайте прогресс.</div>
+            </div>
+            <span class="tasks-section-count" id="marathonsCount">0</span>
+          </div>
+          <form class="task-form marathon-form task-creator" id="marathonForm">
+            <label class="task-field">
+              <span>Название марафона</span>
+              <input id="marathonTitleInput" type="text" maxlength="60" placeholder="Например, 30 дней спорта" required>
+            </label>
+            <div class="marathon-form-grid">
+              <label class="task-field">
+                <span>Срок, дней</span>
+                <input id="marathonDaysInput" type="number" min="1" max="365" step="1" placeholder="30" required>
+              </label>
+              <label class="task-field">
+                <span>План задач</span>
+                <input id="marathonTaskCountInput" type="number" min="1" max="100" step="1" placeholder="Необязательно">
+              </label>
+            </div>
+            <button type="submit" class="task-primary-button">Создать марафон</button>
+          </form>
+          <div class="marathons-list" id="marathonsList"></div>
+        </section>
+      </div>
+
+      <section class="tasks-panel marathon-results-panel">
+        <div class="tasks-section-heading">
+          <div>
+            <div class="tasks-section-kicker">История ответов</div>
+            <div class="tasks-section-title">Результаты марафона</div>
+            <div class="tasks-section-note">Ответы автоматически раскладываются по результату.</div>
+          </div>
+        </div>
+        <div class="marathon-results-grid">
+          <div class="marathon-result-column is-complete">
+            <div class="marathon-result-header">
+              <span>Выполнено</span>
+              <strong id="marathonCompletedCount">0</strong>
+            </div>
+            <div class="marathon-result-list" id="marathonCompletedList"></div>
+          </div>
+          <div class="marathon-result-column is-failed">
+            <div class="marathon-result-header">
+              <span>Провалено</span>
+              <strong id="marathonFailedCount">0</strong>
+            </div>
+            <div class="marathon-result-list" id="marathonFailedList"></div>
+          </div>
+        </div>
+      </section>
     </div>
-    <div class="tasks-global-row">
-      <span>Все задания</span>
-      <label class="switch">
-        <input id="tasksGlobalEnabled" type="checkbox" checked>
-        <span></span>
-      </label>
+  </section>
+  <section class="discipline-page hidden" id="disciplinePage">
+    <div class="discipline-page-header">
+      <div>
+        <div class="discipline-page-title">Дисциплина</div>
+        <div class="discipline-page-subtitle" id="disciplineTodaySummary">Сегодня: 0 зеленых / 0 красных</div>
+      </div>
+      <button id="closeDisciplineBtn" type="button">Закрыть</button>
     </div>
-    <div class="tasks-summary" id="tasksSummary">
-      <div>
-        <span>Активные</span>
-        <strong id="activeTasksCount">0</strong>
-      </div>
-      <div>
-        <span>Ожидают отчета</span>
-        <strong id="dueTasksCount">0</strong>
-      </div>
-      <div>
-        <span>Ближайшее</span>
-        <strong id="nextTaskTime">—</strong>
-      </div>
+    <div class="discipline-actions">
+      <button id="disciplinePenaltyBtn" type="button" class="danger">Горе тебе</button>
     </div>
-    <form class="task-form" id="taskForm">
-      <input id="taskTitleInput" type="text" maxlength="60" placeholder="Название задачи *" required>
-      <textarea id="taskDescriptionInput" rows="3" maxlength="300" placeholder="Описание"></textarea>
-      <div class="task-form-grid">
-        <input id="taskRewardInput" type="number" min="0" step="1" placeholder="Баллы за выполнение">
-        <input id="taskPenaltyInput" type="number" min="0" step="1" placeholder="Минус за невыполнение">
-        <input id="taskTimeInput" type="time" required>
-      </div>
-      <button type="submit">Добавить задание</button>
-    </form>
-    <div class="tasks-list" id="tasksList"></div>
+    <div class="discipline-days" id="disciplineDays"></div>
   </section>
   <section class="sounds-page hidden" id="soundsPage">
     <div class="sounds-page-header">
       <div>
-        <div class="sounds-page-title">Р—РІСѓРєРё</div>
-        <div class="sounds-page-subtitle">РђСѓРґРёРѕР·Р°РїРёСЃРё РґР»СЏ С„РѕРЅРѕРІРѕРіРѕ РІРѕСЃРїСЂРѕРёР·РІРµРґРµРЅРёСЏ</div>
+        <div class="sounds-page-title">Звуки</div>
+        <div class="sounds-page-subtitle">Аудиозаписи для фонового воспроизведения</div>
       </div>
-      <button id="closeSoundsBtn" type="button">Р—Р°РєСЂС‹С‚СЊ</button>
+      <button id="closeSoundsBtn" type="button">Закрыть</button>
     </div>
     <div class="sounds-global-row">
-      <span>РџСЂРѕРёРіСЂС‹РІР°С‚СЊ Р·РІСѓРєРё</span>
+      <span>Проигрывать звуки</span>
       <label class="switch">
         <input id="soundsEnabled" type="checkbox">
         <span></span>
@@ -122,28 +251,38 @@
     </div>
     <div class="sounds-controls">
       <label>
-        <span>Р“СЂРѕРјРєРѕСЃС‚СЊ</span>
+        <span>Громкость</span>
         <input id="soundVolumeInput" type="range" min="0" max="1" step="0.05" value="0.65">
       </label>
       <label class="sound-upload">
-        <span>Р”РѕР±Р°РІРёС‚СЊ Р°СѓРґРёРѕ</span>
+        <span>Добавить аудио</span>
         <input id="soundFileInput" type="file" accept="audio/*" multiple>
       </label>
-      <div id="soundsStatus" class="sounds-status">Р—Р°РїРёСЃРµР№ РїРѕРєР° РЅРµС‚.</div>
+      <div id="soundsStatus" class="sounds-status">Записей пока нет.</div>
     </div>
     <div class="sounds-list" id="soundsList"></div>
   </section>
   <div class="modal hidden" id="taskReportModal" role="dialog" aria-modal="true" aria-labelledby="taskReportTitle">
     <div class="modal-backdrop"></div>
     <div class="modal-card task-report-card">
-      <div class="modal-title" id="taskReportTitle">Отчет по заданию</div>
+      <div class="task-report-topbar">
+        <div>
+          <div class="task-report-kicker">Время ответа</div>
+          <div class="modal-title" id="taskReportTitle">Отчет по задаче</div>
+        </div>
+        <button id="taskDeleteBtn" type="button" class="task-delete-button" title="Удалить задачу" aria-label="Удалить задачу">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"></path>
+          </svg>
+        </button>
+      </div>
       <div class="modal-subtitle" id="taskReportTime">—</div>
       <div class="task-report-name" id="taskReportName">—</div>
       <div class="task-report-description" id="taskReportDescription"></div>
       <div class="task-report-points" id="taskReportPoints">—</div>
       <div class="task-report-actions">
-        <button id="taskDoneBtn" type="button" class="success">Да</button>
-        <button id="taskFailedBtn" type="button" class="danger">Нет</button>
+        <button id="taskDoneBtn" type="button" class="success">Выполнено</button>
+        <button id="taskFailedBtn" type="button" class="danger">Не выполнено</button>
         <button id="taskIgnoreBtn" type="button">Игнорировать</button>
       </div>
     </div>
@@ -193,6 +332,40 @@
     Зажмите левую кнопку мыши и ведите курсор вверх/вниз, чтобы менять направление.
   </div>
   <div class="clock" id="clock">00:00.00</div>
+  </main>
+  <iframe id="trackerFrame" class="tracker-tab-frame" src="trak/index.html" title="Tracker" loading="eager"></iframe>
+  <script>
+    (() => {
+      const STORAGE_KEY = "productiv-line-active-tab";
+      const tabs = Array.from(document.querySelectorAll("[data-app-tab]"));
+      const setActiveTab = (value) => {
+        const activeTab = value === "tracker" ? "tracker" : "line";
+        document.body.classList.toggle("app-tab-tracker", activeTab === "tracker");
+        document.body.classList.toggle("app-tab-line", activeTab === "line");
+        for (const tab of tabs) {
+          const isActive = tab.dataset.appTab === activeTab;
+          if (isActive) tab.setAttribute("aria-current", "page");
+          else tab.removeAttribute("aria-current");
+        }
+        try { localStorage.setItem(STORAGE_KEY, activeTab); } catch (_) {}
+        if (activeTab === "line") {
+          requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+        }
+      };
+
+      for (const tab of tabs) {
+        tab.addEventListener("click", (event) => {
+          event.preventDefault();
+          setActiveTab(tab.dataset.appTab);
+        });
+      }
+
+      const hashTab = location.hash === "#tracker" ? "tracker" : location.hash === "#line" ? "line" : "";
+      let savedTab = "line";
+      try { savedTab = localStorage.getItem(STORAGE_KEY) || savedTab; } catch (_) {}
+      setActiveTab(hashTab || savedTab);
+    })();
+  </script>
   <script src="env.js"></script>
   <script type="module" src="script.js"></script>
 </body>

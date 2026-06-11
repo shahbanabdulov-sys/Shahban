@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Трекер Продуктивности</title>
+    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="../site-nav.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="theme.css?v=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    <script>
+        if (window.self !== window.top) {
+            document.documentElement.classList.add('is-embedded-tracker');
+        }
+    </script>
+</head>
+<body class="site-page-trak">
+    <nav class="site-switcher" aria-label="Site switcher">
+        <a class="site-switcher__link" href="../index.html#line">Productiv Line</a>
+        <a class="site-switcher__link" href="index.html" aria-current="page">Tracker</a>
+    </nav>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">
+                <i class="fas fa-chart-line"></i>
+                Трекер Продуктивности
+            </h1>
+            <p class="subtitle">Отслеживайте прогресс в различных направлениях</p>
+            <div class="section-actions" style="margin-left:auto; gap: 8px; align-items:center; display:flex;">
+                <span id="authStatus" style="font-size: 12px; opacity: 0.8; display:none;"></span>
+                <button id="openFateJournalButton" class="layout-toggle-button" title="Дневник Судьбы" onclick="location.href='fate-journal.html'">
+                    <i class="fas fa-book"></i>
+                </button>
+                <button id="openDraftButton" class="layout-toggle-button" title="Черновик">
+                    <i class="fas fa-sticky-note"></i>
+                </button>
+                <button id="openAuthButton" class="layout-toggle-button" title="Вход / Регистрация">
+                    <i class="fas fa-user"></i>
+                </button>
+                <button id="logoutButton" class="layout-toggle-button" title="Выйти" style="display:none;">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Секция добавления направлений -->
+        <section class="add-section">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="directionInput" 
+                    placeholder="Введите новое направление (например: Спорт, Английский, Арабский...)"
+                    class="direction-input"
+                >
+                <button id="addButton" class="add-button">
+                    <i class="fas fa-plus"></i>
+                    Добавить
+                </button>
+            </div>
+        </section>
+
+        <!-- Секция направлений -->
+        <section class="directions-section">
+            <div class="section-toolbar">
+                <h2 class="section-title">Мои направления</h2>
+                <div class="section-actions">
+                    <button id="openTrashButton" class="layout-toggle-button" title="Корзина">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button id="addCategoryButton" class="layout-toggle-button" title="Добавить категорию">
+                        <i class="fas fa-folder-plus"></i>
+                    </button>
+                    <button id="openTasksButton" class="layout-toggle-button" title="Ежедневные задания">
+                        <i class="fas fa-tasks"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="directionsList" class="directions-list horizontal-directions">
+                <!-- Направления будут добавляться здесь динамически по категориям -->
+            </div>
+            <div id="emptyState" class="empty-state">
+                <i class="fas fa-target"></i>
+                <h3>Нет направлений</h3>
+                <p>Добавьте направление</p>
+            </div>
+        </section>
+
+        <!-- Секция ежедневных заданий (скрыта по умолчанию) -->
+        <section class="tasks-section" id="tasksSection" style="display: none;">
+            <div class="section-toolbar">
+                <h2 class="section-title"><i class="fas fa-calendar-week"></i> Ежедневные задания</h2>
+                <div class="section-actions">
+                    <label for="tasksPlacementSelect" style="color:#9ca3af; font-size:0.9rem; margin-right:6px;">Расположение:</label>
+                    <select id="tasksPlacementSelect" class="period-select" style="min-width:180px;">
+                        <option value="top">Вверху (после шапки)</option>
+                        <option value="bottom">Внизу (перед футером)</option>
+                        <option value="modal">Отдельное меню</option>
+                    </select>
+                    <button id="openTasksHistoryButton" class="layout-toggle-button" title="История заданий" style="margin-left:8px;">
+                        <i class="fas fa-history"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="tasksWeekGrid" class="tasks-week-grid">
+                <!-- Сетка из 7 дней будет отрисована скриптом -->
+            </div>
+        </section>
+
+
+        <!-- Modal: Ежедневные задания (вариант "отдельное меню") -->
+        <div id="tasksModal" class="modal-backdrop" style="display:none;">
+            <div class="modal">
+                <div class="modal-header" style="display:flex; align-items:center; gap:8px;">
+                    <h3 style="flex:1;">Ежедневные задания</h3>
+                    <label for="tasksPlacementSelectModal" style="color:#9ca3af; font-size:0.9rem;">Расположение:</label>
+                    <select id="tasksPlacementSelectModal" class="period-select" style="min-width:180px;">
+                        <option value="top">Вверху (после шапки)</option>
+                        <option value="bottom">Внизу (перед футером)</option>
+                        <option value="modal">Отдельное меню</option>
+                    </select>
+                    <button id="tasksModalResizeButton" class="modal-close" title="Развернуть/свернуть"><i class="fas fa-expand"></i></button>
+                    <button id="closeTasksModal" class="modal-close"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div id="tasksModalGrid" class="tasks-week-grid"></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="closeTasksModalFooter" class="restore-button"><i class="fas fa-times"></i> Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+        <main class="main-content">
+            <!-- Главный grid контейнер для графика и детальной панели -->
+            <div class="content-grid">
+                <!-- Левая колонка: основной график -->
+                <section class="chart-section main-chart" id="chartSection" style="display: none;">
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-line"></i>
+                        График продуктивности
+                    </h2>
+                    <div class="chart-controls">
+                        <select id="directionSelect" class="direction-select">
+                            <option value="">Выберите направление</option>
+                        </select>
+                        <select id="periodSelect" class="period-select">
+                            <option value="30m">30 минут</option>
+                            <option value="1h">1 час</option>
+                            <option value="6h">6 часов</option>
+                            <option value="12h">12 часов</option>
+                            <option value="1d">1 день</option>
+                            <option value="3d">3 дня</option>
+                            <option value="7d">7 дней</option>
+                            <option value="10d">10 дней</option>
+                            <option value="1M">1 месяц</option>
+                            <option value="3M">3 месяца</option>
+                            <option value="6M">6 месяцев</option>
+                            <option value="1Y">1 год</option>
+                        </select>
+                        <div class="zoom-controls">
+                            <div class="zoom-selector">
+                                <label>Свечей:</label>
+                                <select id="candlesCountSelect" class="candles-count-select">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                    <option value="300">300</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                            </div>
+                            <div class="zoom-buttons">
+                                <button id="zoomInButton" class="zoom-button" title="Приблизить">
+                                    <i class="fas fa-search-plus"></i>
+                                </button>
+                                <button id="zoomOutButton" class="zoom-button" title="Отдалить">
+                                    <i class="fas fa-search-minus"></i>
+                                </button>
+                                <button id="resetZoomButton" class="zoom-button" title="Сбросить масштаб">
+                                    <i class="fas fa-home"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="navigation-controls">
+                            <div class="nav-step-selector">
+                                <label>Шаг:</label>
+                                <select id="navStepSelect" class="nav-step-select">
+                                    <option value="1">1 свеча</option>
+                                    <option value="5" selected>5 свечей</option>
+                                    <option value="10">10 свечей</option>
+                                    <option value="50">50 свечей</option>
+                                    <option value="100">100 свечей</option>
+                                    <option value="500">500 свечей</option>
+                                    <option value="1000">1000 свечей</option>
+                                </select>
+                            </div>
+                            <div class="nav-buttons">
+                                <button id="navLeftButton" class="nav-button" title="Листать влево">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button id="navRightButton" class="nav-button" title="Листать вправо">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <button id="navToEndButton" class="nav-button" title="К последним свечам">
+                                    <i class="fas fa-fast-forward"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="data-controls">
+                            <div class="data-actions">
+                                <label>Данные:</label>
+                                <button id="exportButton" class="data-button export-button" title="Экспорт данных">
+                                    <i class="fas fa-download"></i>
+                                    Экспорт
+                                </button>
+                                <button id="importButton" class="data-button import-button" title="Импорт данных">
+                                    <i class="fas fa-upload"></i>
+                                    Импорт
+                                </button>
+                                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                                 <button id="clearAllValuesButton" class="danger-button" title="Очистить все значения">
+                                     <i class="fas fa-trash"></i>
+                                     Очистить все значения
+                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="intervalInfo" class="interval-info" style="display: none;">
+                            <span class="interval-text">Таймфрейм: </span>
+                            <span id="timeLeft" class="time-left">-</span>
+                        </div>
+                            <div id="periodGradeBadge" style="display:none; position:relative; margin:8px 0;">
+                                <div id="periodGradeValue" style="font-size:28px; font-weight:700; padding:6px 12px; border-radius:12px; display:inline-block;">
+                                    0.0
+                                </div>
+                                <span id="periodGradeLabel" style="margin-left:8px; font-size:12px; opacity:0.8;">Оценка за период</span>
+                            </div>
+                        <div class="zoom-hint">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Управление:</strong> Колесо мыши: зум • Перетаскивание: прокрутка • Стрелки ←→: навигация • +/-: зум • 0: сброс
+                        </div>
+                        <div id="positionIndicator" class="position-indicator" style="display: none;">
+                            <span id="positionText" class="position-text">Позиция: свечи 1-50 из 100</span>
+                        </div>
+                        <canvas id="productivityChart"></canvas>
+                    </div>
+                </section>
+                
+                <!-- Дополнительный раздел: общий график всех направлений ниже основного -->
+                <section class="chart-section overall-chart" id="overallChartSection" style="display: none;">
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-line"></i>
+                        Общий график: все направления (сумма)
+                    </h2>
+                    <div class="chart-controls" style="margin-bottom: 10px;">
+                        <select id="overallPeriodSelect" class="period-select">
+                            <option value="30m">30 минут</option>
+                            <option value="1h">1 час</option>
+                            <option value="6h">6 часов</option>
+                            <option value="12h">12 часов</option>
+                            <option value="1d">1 день</option>
+                            <option value="3d">3 дня</option>
+                            <option value="7d">7 дней</option>
+                            <option value="10d">10 дней</option>
+                            <option value="1M">1 месяц</option>
+                            <option value="3M">3 месяца</option>
+                            <option value="6M">6 месяцев</option>
+                            <option value="1Y">1 год</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <div id="overallPeriodGradeBadge" style="display:none; position:relative; margin:8px 0;">
+                            <div id="overallPeriodGradeValue" style="font-size:28px; font-weight:700; padding:6px 12px; border-radius:12px; display:inline-block;">
+                                0.0
+                            </div>
+                            <span id="overallPeriodGradeLabel" style="margin-left:8px; font-size:12px; opacity:0.8;">Оценка за период (все направления)</span>
+                        </div>
+                        <div id="overallIntervalInfo" class="interval-info" style="display: none;">
+                            <span class="interval-text">Таймфрейм: </span>
+                            <span id="overallTimeLeft" class="time-left">-</span>
+                        </div>
+                        <canvas id="overallChart"></canvas>
+                    </div>
+                </section>
+                
+                <!-- Правая колонка: детальная панель направления -->
+                <aside class="detail-sidebar">
+                    <section id="directionDetailPanel" class="direction-detail-panel" style="display: none;">
+                        <div class="detail-header">
+                            <button id="closeDetailPanel" class="close-panel-button">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <h3 id="detailDirectionName" class="detail-direction-name">Название направления</h3>
+                            <div id="detailDirectionScore" class="detail-direction-score">Общий счёт: 0 баллов</div>
+                        </div>
+                        
+                        <div class="detail-content">
+                            <div class="detail-controls">
+                                <div class="detail-category-control">
+                                    <label>Категория:</label>
+                                    <select id="detailCategorySelect" class="detail-category-select">
+                                        <!-- Опции будут добавлены динамически -->
+                                    </select>
+                                </div>
+
+                                <div class="detail-color-control">
+                                    <label>Цвет направления:</label>
+                                    <div id="detailColorPicker" class="color-picker">
+                                        <button class="color-chip color-red" data-color="red" title="Красный"></button>
+                                        <button class="color-chip color-orange" data-color="orange" title="Оранжевый (по умолчанию)"></button>
+                                        <button class="color-chip color-green" data-color="green" title="Зелёный"></button>
+                                    </div>
+                                </div>
+                                
+                                <div class="detail-score-control">
+                                    <label>Добавить баллы:</label>
+                                    <div class="detail-score-input-container">
+                                        <input 
+                                            type="number" 
+                                            id="detailScoreInput" 
+                                            class="detail-score-input" 
+                                            placeholder="+11 или -5"
+                                        >
+                                        <button id="detailAddScoreButton" class="detail-add-score-button">
+                                            <i class="fas fa-plus"></i>
+                                            Добавить
+                                        </button>
+                                    </div>
+                                </div>
+                                
+								<div class="detail-description">
+									<h4 class="detail-subtitle"><i class="fas fa-align-left"></i> Описание</h4>
+									<textarea id="detailDescriptionInput" class="detail-description-textarea" placeholder="Добавьте описание для этого направления..."></textarea>
+									<div class="detail-description-actions">
+										<label for="detailDescriptionColor" style="margin-right:8px; color:#9ca3af; font-size:0.9rem;">Цвет текста:</label>
+										<input type="color" id="detailDescriptionColor" value="#111111" style="margin-right:8px; width:36px; height:36px; padding:0; border:none; background:transparent;" />
+										<button id="saveDescriptionButton" class="detail-add-score-button"><i class="fas fa-save"></i> Сохранить описание</button>
+									</div>
+								</div>
+
+                                
+
+                                <div class="detail-actions">
+                                     <button id="detailClearAllScoresButton" class="danger-button"><i class="fas fa-trash"></i> Очистить все значения направления</button>
+                                    <button id="detailDeleteButton" class="detail-delete-button">
+                                        <i class="fas fa-trash"></i>
+                                        Удалить направление
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Настройки начисления баллов -->
+                            <div class="scoring-settings">
+                                <h4 class="detail-subtitle"><i class="fas fa-sliders-h"></i> Настройки начисления</h4>
+                                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                                    <button id="addMetricButton" class="detail-add-score-button"><i class="fas fa-plus"></i> Добавить метрику</button>
+                                    <span style="font-size:12px; color:#9ca3af;">Типы: Процент (0–100%) или Время (минуты ➜ баллы)</span>
+                                </div>
+                                <div id="scoringMetricsList" class="scoring-grid"></div>
+                                <div class="scoring-grid">
+                                    <div class="scoring-field">
+                                        <label>Общий максимум за период (опционально)</label>
+                                        <input type="number" id="detailTotalMaxPointsInput" class="scoring-input" min="0" step="0.1" placeholder="">
+                                    </div>
+                                    <div class="scoring-field">
+                                        <label>Оценка по направлению (ср. по всем сессиям)</label>
+                                        <div id="detailDirectionAvgGrade" style="font-weight:600;">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Калькулятор начисления за сессию -->
+                            <div class="session-calculator">
+                                <h4 class="detail-subtitle"><i class="fas fa-calculator"></i> Расчёт за сессию</h4>
+                                <div id="sessionMetricsInputs" class="scoring-grid"></div>
+                                <div class="scoring-grid">
+                                    <div class="scoring-field">
+                                        <label>Оценка за сессию (0–10, опционально)</label>
+                                        <input type="number" id="calcManualGradeInput" class="scoring-input" min="0" max="10" step="0.1" placeholder="Например, 6.5">
+                                    </div>
+                                </div>
+                                <div id="calcPreview" class="calc-preview"></div>
+                                <div class="calc-actions">
+                                    <button id="calcApplyButton" class="detail-add-score-button"><i class="fas fa-plus"></i> Рассчитать и начислить</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Создано для повышения личной эффективности</p>
+        </footer>
+    </div>
+
+    <!-- Modal Корзина -->
+    <div id="trashModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Корзина</h3>
+                <button id="closeTrashButton" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="trash-section">
+                    <h4>Удалённые направления</h4>
+                    <div id="trashDirectionsList" class="trash-list"></div>
+                </div>
+                <div class="trash-section">
+                    <h4>Удалённые категории</h4>
+                    <div id="trashCategoriesList" class="trash-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="emptyTrashButton" class="danger-button"><i class="fas fa-trash"></i> Очистить корзину</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Комментарий к свече -->
+    <div id="commentModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="commentModalTitle">Комментарий к свече</h3>
+                <button id="closeCommentButton" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="comment-info" id="commentInfo"></div>
+                <textarea id="commentText" class="comment-textarea" placeholder="Ваш комментарий..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="deleteCommentButton" class="danger-button" style="margin-right:auto; display:none;"><i class="fas fa-trash"></i> Удалить комментарий</button>
+                <button id="saveCommentButton" class="restore-button"><i class="fas fa-save"></i> Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal История заданий -->
+    <div id="tasksHistoryModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>История заданий</h3>
+                <button id="closeTasksHistoryButton" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                    <label style="color:#9ca3af; font-size:0.9rem;">Сортировать по:</label>
+                    <select id="tasksHistorySortSelect" class="period-select" style="min-width:200px;">
+                        <option value="done_desc">Выполнено (по убыв.)</option>
+                        <option value="failed_desc">Провалено (по убыв.)</option>
+                        <option value="done_asc">Выполнено (по возр.)</option>
+                        <option value="failed_asc">Провалено (по возр.)</option>
+                        <option value="name_asc">Название (А→Я)</option>
+                    </select>
+                </div>
+                <div id="tasksHistoryList" class="trash-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="clearTasksHistoryButton" class="danger-button"><i class="fas fa-trash"></i> Очистить историю</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Разбивка общей свечи -->
+    <div id="breakdownModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="breakdownModalTitle">Разбивка по направлениям</h3>
+                <button id="closeBreakdownButton" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="breakdownSummary" class="comment-info"></div>
+                <div id="breakdownList" class="trash-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeBreakdownFooterButton" class="restore-button"><i class="fas fa-times"></i> Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Аутентификация -->
+    <div id="authModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Вход или регистрация</h3>
+                <button id="closeAuthButton" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group" style="display:flex; flex-direction:column; gap:8px;">
+                    <input id="authEmail" type="email" placeholder="Email" class="direction-input">
+                    <input id="authPassword" type="password" placeholder="Пароль" class="direction-input">
+                </div>
+                <p style="font-size:12px; opacity:0.8; margin-top:8px;">Данные будут синхронизированы между устройствами после входа.</p>
+            </div>
+            <div class="modal-footer" style="display:flex; gap:8px;">
+                <button id="signInButton" class="restore-button"><i class="fas fa-sign-in-alt"></i> Войти</button>
+                <button id="signUpButton" class="detail-add-score-button"><i class="fas fa-user-plus"></i> Зарегистрироваться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Черновик -->
+    <div id="draftModal" class="modal-backdrop" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Черновик</h3>
+                <button id="closeDraftButton" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="draftText" class="comment-textarea" placeholder="Пишите сюда идеи, планы, мысли..."></textarea>
+            </div>
+            <div class="modal-footer" style="display:flex; gap:8px;">
+                <button id="saveDraftButton" class="detail-add-score-button"><i class="fas fa-save"></i> Сохранить</button>
+                <button id="clearDraftButton" class="danger-button"><i class="fas fa-trash"></i> Очистить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (optional; требуется для входа и синхронизации) -->
+    <!-- Локальный конфиг (скопируйте firebase-config.example.js -> firebase-config.js и заполните) -->
+    <script src="firebase-config.js"></script>
+    <script>
+        // Фоллбек: если локальный файл не подключен, оставим отключенной синхронизацию
+        window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || null;
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"></script>
+    <script src="script.js?v=3"></script>
+</body>
+</html>

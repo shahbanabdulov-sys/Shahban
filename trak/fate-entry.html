@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали записи — Дневник Судьбы</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="../site-nav.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family:'Inter', sans-serif; margin:0; background: radial-gradient(1000px 600px at 10% -10%, #1f2937 0%, #0b0e11 60%), radial-gradient(800px 500px at 110% 10%, #111827 0%, #0b0e11 70%); color:#e5e7eb; }
+        .container { max-width: 960px; margin: 0 auto; padding: 16px 20px; }
+        .header { display:flex; align-items:center; gap:10px; padding:12px 16px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); margin-bottom:16px; }
+        .title { font-weight:800; font-size:1.2rem; display:flex; align-items:center; gap:8px; }
+        .title i { color:#60a5fa; }
+        .header-actions { margin-left:auto; display:flex; gap:8px; }
+        .btn { background: rgba(17,24,39,0.85); color:#93c5fd; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 12px; cursor:pointer; }
+        .btn:hover { background: rgba(17,24,39,0.95); }
+        .panel { background: rgba(17,24,39,0.7); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:12px; }
+        .grid { display:grid; grid-template-columns: 1fr; gap:12px; }
+        .field { display:flex; flex-direction:column; gap:6px; }
+        .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .input, textarea { background:#0b0e11; color:#e5e7eb; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; width:100%; }
+        .score-input { width:120px; text-align:center; }
+        .muted { color:#9ca3af; font-size:.9rem; }
+        .color-chip { width:28px; height:28px; border-radius:8px; cursor:pointer; border:2px solid rgba(255,255,255,0.18); }
+        .chip-red { background:#ff4d4f; }
+        .chip-orange { background:#fa8c16; }
+        .chip-green { background:#10b981; }
+        .chip-selected { box-shadow:0 0 0 2px #fff inset; }
+        .subpoints { display:flex; flex-direction:column; gap:8px; }
+        .subpoint { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:8px; align-items:stretch; }
+        .desc-toolbar { display:flex; gap:6px; flex-wrap:wrap; }
+        .desc-btn { border:1px solid rgba(255,255,255,0.12); background: rgba(17,24,39,0.8); color:#e5e7eb; border-radius:8px; padding:6px 8px; cursor:pointer; font-size:.85rem; }
+        .desc-color { width:24px; height:24px; border-radius:6px; border:1px solid rgba(255,255,255,0.2); cursor:pointer; }
+        .desc-edit { min-height: 100px; padding:10px 12px; background:#0b0e11; color:#e5e7eb; border:1px solid rgba(255,255,255,0.12); border-radius:8px; overflow:auto; }
+        .desc-edit:focus { outline: 2px solid rgba(147,197,253,0.35); }
+        .desc-edit[data-placeholder]:empty:before { content: attr(data-placeholder); color:#9ca3af; }
+        @media (max-width: 600px) { .score-input { width:100%; } }
+    </style>
+    <link rel="stylesheet" href="theme.css?v=1">
+    <script>
+    // small helper to read query params
+    function getParam(name){ const u = new URL(location.href); return u.searchParams.get(name); }
+    </script>
+</head>
+<body class="site-page-trak">
+    <nav class="site-switcher" aria-label="Site switcher">
+        <a class="site-switcher__link" href="../index.html">Productiv Line</a>
+        <a class="site-switcher__link" href="index.html" aria-current="page">Tracker</a>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <div class="title"><i class="fas fa-book-open"></i> Детали записи</div>
+            <div class="header-actions">
+                <button class="btn" onclick="location.href='fate-journal.html'"><i class="fas fa-arrow-left"></i> Назад</button>
+                <button id="deleteBtn" class="btn" style="background: linear-gradient(45deg, #ef4444, #dc2626); color:#fff;"><i class="fas fa-trash"></i> Удалить</button>
+                <button id="saveBtn" class="btn"><i class="fas fa-save"></i> Сохранить</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <div class="field">
+                    <label>Название</label>
+                    <input id="titleInput" class="input" />
+                </div>
+                <div class="row">
+                    <div class="field" style="flex:1;">
+                        <label>Оценка</label>
+                        <input id="scoreInput" class="input score-input" type="number" step="0.1" />
+                    </div>
+                    <div class="field" style="flex:2;">
+                        <label>Создано</label>
+                        <div id="createdText" class="muted">-</div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Цвет</label>
+                    <div id="colorRow" class="row"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="row" style="justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:#93c5fd;">Подпункты</h3>
+                    <button id="addSubBtn" class="btn"><i class="fas fa-plus"></i> Добавить подпункт</button>
+                </div>
+                <div id="subpointsWrap" class="subpoints"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+        const STORAGE_KEY = 'fateJournal.entries.v1';
+        /** @type {Array} */
+        let entries = load();
+        const id = getParam('id');
+        let entry = entries.find(e => e.id === id);
+        if(!entry){ alert('Запись не найдена.'); location.href = 'fate-journal.html'; return; }
+
+        const titleInput = document.getElementById('titleInput');
+        const scoreInput = document.getElementById('scoreInput');
+        const createdText = document.getElementById('createdText');
+        const colorRow = document.getElementById('colorRow');
+        const subpointsWrap = document.getElementById('subpointsWrap');
+
+        // init UI
+        function renderAll(){
+            titleInput.value = entry.title || '';
+            scoreInput.value = String(entry.score || 0);
+            createdText.textContent = new Date(entry.createdAt).toLocaleString();
+            renderColors();
+            renderSubpoints();
+        }
+
+        function renderColors(){
+            colorRow.innerHTML = '';
+            ['red','orange','green'].forEach(c => {
+                const chip = document.createElement('div');
+                chip.className = 'color-chip ' + (c==='red'?'chip-red':c==='orange'?'chip-orange':'chip-green') + (entry.color===c?' chip-selected':'');
+                chip.title = c;
+                chip.addEventListener('click', () => { entry.color = c; save(); renderColors(); });
+                colorRow.appendChild(chip);
+            });
+        }
+
+        function renderSubpoints(){
+            subpointsWrap.innerHTML = '';
+            for(const sp of entry.subpoints){ subpointsWrap.appendChild(renderSubpoint(sp)); }
+        }
+
+        function renderSubpoint(sp){
+            const el = document.createElement('div');
+            el.className = 'subpoint';
+            const label = document.createElement('input');
+            label.className = 'input';
+            label.placeholder = 'Название подпункта';
+            label.value = sp.label || '';
+            label.addEventListener('change', () => { sp.label = label.value; save(); });
+            const toolbar = document.createElement('div');
+            toolbar.className = 'desc-toolbar';
+            const colors = ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#9ca3af'];
+            const colorRow = document.createElement('div');
+            colorRow.className = 'row';
+            colors.forEach(c => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'desc-color';
+                b.style.background = c;
+                b.title = c;
+                b.addEventListener('click', () => applyColor(desc, c));
+                colorRow.appendChild(b);
+            });
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'desc-btn';
+            clearBtn.textContent = 'Сброс цвета';
+            clearBtn.addEventListener('click', () => applyColor(desc, '#e5e7eb'));
+            toolbar.append(colorRow, clearBtn);
+
+            const desc = document.createElement('div');
+            desc.className = 'desc-edit';
+            desc.contentEditable = 'true';
+            desc.setAttribute('data-placeholder', 'Опишите подробно...');
+            desc.innerHTML = sp.text || '';
+            desc.addEventListener('input', () => { sp.text = desc.innerHTML; save(); });
+            const remove = document.createElement('button');
+            remove.className = 'btn';
+            remove.innerHTML = '<i class="fas fa-times"></i>';
+            remove.addEventListener('click', () => { entry.subpoints = entry.subpoints.filter(x => x.id !== sp.id); save(); renderSubpoints(); });
+            el.append(label, toolbar, desc, remove);
+            return el;
+        }
+
+        // actions
+        document.getElementById('addSubBtn').addEventListener('click', () => {
+            entry.subpoints.push({ id: rid(), label: 'Свободный пункт', text: '' });
+            save();
+            renderSubpoints();
+        });
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            entry.title = titleInput.value || '';
+            entry.score = parseFloat(scoreInput.value || '0') || 0;
+            save();
+            alert('Сохранено');
+        });
+        document.getElementById('deleteBtn').addEventListener('click', () => {
+            if(!confirm('Удалить запись?')) return;
+            entries = entries.filter(e => e.id !== entry.id);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+            location.href = 'fate-journal.html';
+        });
+
+        function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+        function autoResize(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
+        function applyColor(container, color){
+            if(!container) return;
+            const sel = window.getSelection();
+            if(!sel || sel.rangeCount === 0) return;
+            const range = sel.getRangeAt(0);
+            if(!container.contains(range.commonAncestorContainer)) return;
+            try { document.execCommand('styleWithCSS', false, true); } catch(_) {}
+            document.execCommand('foreColor', false, color);
+            // ensure we persist changed HTML
+            const sp = entry.subpoints.find(x => container && container.parentElement && x.label === container.parentElement.querySelector('input.input').value);
+            // fallback: save whole entry
+            save();
+        }
+        function load(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw? JSON.parse(raw): []; } catch(_){ return []; } }
+        function rid(){ try{ const a=new Uint32Array(4); crypto.getRandomValues(a); return Array.from(a).map(x=>x.toString(16).padStart(8,'0')).join(''); } catch(_){ return 'id-'+Math.random().toString(36).slice(2)+Date.now().toString(36); } }
+
+        renderAll();
+    })();
+    </script>
+</body>
+</html>
+
+

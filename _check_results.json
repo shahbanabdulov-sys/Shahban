@@ -1,0 +1,168 @@
+{
+  "desktop": {
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "toolbar": {
+      "left": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "hint": {
+      "left": 408.609375,
+      "top": 717,
+      "right": 957.390625,
+      "bottom": 752,
+      "width": 548.78125,
+      "height": 35
+    },
+    "stats": {
+      "left": 16,
+      "top": 96,
+      "right": 214,
+      "bottom": 156,
+      "width": 198,
+      "height": 60
+    },
+    "clock": {
+      "left": 646.3203125,
+      "top": 653,
+      "right": 719.6796875,
+      "bottom": 686,
+      "width": 73.359375,
+      "height": 33
+    },
+    "openPanel": null,
+    "brand": {
+      "left": 14,
+      "top": 14,
+      "right": 284,
+      "bottom": 79.59375,
+      "width": 270,
+      "height": 65.59375
+    },
+    "overlaps": {
+      "toolbarHint": false,
+      "toolbarPanel": false,
+      "statsClock": false,
+      "brandStats": false
+    }
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "toolbar": {
+      "left": 8,
+      "top": 774,
+      "right": 382,
+      "bottom": 836,
+      "width": 374,
+      "height": 62
+    },
+    "hint": {
+      "left": 8,
+      "top": 711.625,
+      "right": 382,
+      "bottom": 760,
+      "width": 374,
+      "height": 48.375
+    },
+    "stats": {
+      "left": 8,
+      "top": 8,
+      "right": 198,
+      "bottom": 56.375,
+      "width": 190,
+      "height": 48.375
+    },
+    "clock": {
+      "left": 317.984375,
+      "top": 8,
+      "right": 382,
+      "bottom": 40,
+      "width": 64.015625,
+      "height": 32
+    },
+    "openPanel": null,
+    "brand": {
+      "left": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "overlaps": {
+      "toolbarHint": false,
+      "toolbarPanel": false,
+      "statsClock": false,
+      "brandStats": false
+    }
+  },
+  "mobilePanel": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "toolbar": {
+      "left": 8,
+      "top": 774,
+      "right": 382,
+      "bottom": 836,
+      "width": 374,
+      "height": 62
+    },
+    "hint": {
+      "left": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "stats": {
+      "left": 8,
+      "top": 8,
+      "right": 198,
+      "bottom": 56.375,
+      "width": 190,
+      "height": 48.375
+    },
+    "clock": {
+      "left": 317.984375,
+      "top": 8,
+      "right": 382,
+      "bottom": 40,
+      "width": 64.015625,
+      "height": 32
+    },
+    "openPanel": {
+      "left": 8,
+      "top": 698,
+      "right": 382,
+      "bottom": 764,
+      "width": 374,
+      "height": 66
+    },
+    "brand": {
+      "left": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0
+    },
+    "overlaps": {
+      "toolbarHint": false,
+      "toolbarPanel": false,
+      "statsClock": false,
+      "brandStats": false
+    }
+  }
+}

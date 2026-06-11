@@ -5,10 +5,10 @@ const supabaseUrl = appConfig.SUPABASE_URL || appConfig.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = appConfig.SUPABASE_ANON_KEY || appConfig.VITE_SUPABASE_ANON_KEY || "";
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in Netlify.");
+  throw new Error("Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in Netlify.");
 }
 
-export const supabase = createClient(supabaseUrl || "https://example.supabase.co", supabaseAnonKey || "missing-key", {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
