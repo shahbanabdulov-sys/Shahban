@@ -1,5 +1,12 @@
 [build]
-  command = "node generate-config.mjs"
-  publish = "."
+  command = "npm run build"
+  publish = "dist"
 
-# Static site with Supabase auth.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
